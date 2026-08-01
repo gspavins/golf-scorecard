@@ -40,7 +40,9 @@
   .meta .v{font-weight:700}
   .meta select{font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:2px 5px;background:#fff;max-width:100%;min-width:0}
   #course{flex:1}
-  #gameDateInput{font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:2px 5px;background:#fff;color:var(--ink);max-width:100%;min-width:0}
+  .datewrap{position:relative;display:inline-flex;align-items:center;flex:1;min-width:0}
+  #dateLabel{font-weight:700;white-space:nowrap;pointer-events:none}
+  .datewrap #gameDateInput{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:none;padding:0;margin:0;cursor:pointer}
 
   /* game browser modal */
   .modal{position:fixed;inset:0;background:rgba(20,25,22,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50}
@@ -171,7 +173,12 @@
     <div><span class="k">Course</span>
       <select id="course"></select>
     </div>
-    <div><span class="k">Date</span><input type="date" id="gameDateInput" class="v"></div>
+    <div><span class="k">Date</span>
+      <span class="datewrap">
+        <span class="v" id="dateLabel">Today</span>
+        <input type="date" id="gameDateInput" aria-label="Round date">
+      </span>
+    </div>
   </div>
 
   <div class="sync"><span class="dotstat" id="syncDot"></span><span id="syncMsg">Local only — scores saved on this device</span></div>
@@ -256,6 +263,12 @@ function fmtDate(iso){
   const[y,m,d]=iso.split('-').map(Number);
   return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 }
+// keep the hidden date input and the visible dd MMM yyyy label in sync
+function setDate(iso){
+  gameDate=iso||todayISO();
+  const di=document.getElementById('gameDateInput');if(di)di.value=gameDate;
+  const lb=document.getElementById('dateLabel');if(lb)lb.textContent=fmtDate(gameDate);
+}
 
 function getGameId(){
   const u = new URL(location.href);
@@ -274,7 +287,7 @@ function getGameId(){
 function strokesOnHole(hc,si){let s=0;if(hc>=si)s++;if(hc>=si+18)s++;if(hc>=si+36)s++;return s;}
 // max score that still scores a Stableford point = net double bogey
 function maxScore(who,h){return h.par+strokesOnHole(hcap[who],h.si)+2;}
-function isCapped(who,h){const g=scores[who][h.n];return g!=null && g>=maxScore(who,h);}
+function isCapped(who,h){const g=scores[who][h.n];return g!=null && g>maxScore(who,h);}
 function stablefordHole(who,h){
   const g=scores[who][h.n]; if(g==null)return null;
   const net=g-strokesOnHole(hcap[who],h.si);
@@ -445,7 +458,7 @@ async function subscribeGame(pushIfEmpty){
   channel=sb.channel('game-'+gameId)
     .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
       const r=payload.new; if(!r)return;
-      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){gameDate=r.game_date;const di=document.getElementById('gameDateInput');if(di)di.value=gameDate;}}
+      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){setDate(r.game_date);}}
       else if(scores[r.player]){if(r.strokes==null)delete scores[r.player][r.hole];else scores[r.player][r.hole]=r.strokes;}
       build();
     }).subscribe();
@@ -454,7 +467,7 @@ async function subscribeGame(pushIfEmpty){
   document.getElementById('course').value=courseKey;
   document.getElementById('hc-gav').value=hcap.gav;
   document.getElementById('hc-phil').value=hcap.phil;
-  const di=document.getElementById('gameDateInput');if(di)di.value=gameDate;
+  setDate(gameDate);
   loadCourse(courseKey);
 }
 // fetch all games (from Supabase meta rows if online, else local index)
@@ -499,7 +512,7 @@ function buildCourseDropdown(){
 }
 document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
 document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
-document.getElementById('gameDateInput').onchange=e=>{gameDate=e.target.value||todayISO();pushMeta();indexGame();};
+document.getElementById('gameDateInput').onchange=e=>{setDate(e.target.value);pushMeta();indexGame();};
 document.getElementById('reset').onclick=async()=>{
   if(!confirm('Clear all scores for this game?'))return;
   scores.gav={};scores.phil={};build();
@@ -517,7 +530,7 @@ async function switchGame(id){
   restoreLocal();
   document.getElementById('hc-gav').value=hcap.gav;
   document.getElementById('hc-phil').value=hcap.phil;
-  document.getElementById('gameDateInput').value=gameDate;
+  setDate(gameDate);
   document.getElementById('course').value=courseKey;
   loadCourse(courseKey);
   if(online&&sb){try{await subscribeGame(false);build();}catch(e){console.error(e);}}
@@ -597,7 +610,7 @@ restoreLocal();
 liveGameId=gameId;
 document.getElementById('hc-gav').value=hcap.gav;
 document.getElementById('hc-phil').value=hcap.phil;
-document.getElementById('gameDateInput').value=gameDate;
+setDate(gameDate);
 document.getElementById('gameId').innerHTML=`Game <code>${gameId}</code> — share this link so Gav &amp; Phil see the same card.`;
 buildCourseDropdown();
 loadCourse(courseKey);
