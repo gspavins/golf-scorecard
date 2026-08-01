@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SA Golf Scorecard — Gav vs Phil</title>
+<link rel="icon" type="image/png" href="golf-icon.png">
+<link rel="apple-touch-icon" href="golf-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Golf Card">
+<meta name="theme-color" content="#0f5c34">
+<style>
+  :root{
+    --ink:#1e1e1e;--card:#fff;--line:#3a3a3a;--hair:#b9b6ab;
+    --champ:#f5d800;--champ-dk:#e8c400;
+    --club:#f4f2ea;--par:#f7cdcd;--green:#0f5c34;--green-dk:#0a3f24;
+    --gold:#b8912f;--dim:#6d6a60;--win:#d8ecd8;--clay:#b45b3e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:radial-gradient(120% 90% at 50% 0%,#eceae1,#cfccc0);color:var(--ink);padding:8px;min-height:100vh}
+  .wrap{max-width:940px;margin:0 auto}
+
+  header{background:var(--card);border:2px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;padding:8px 14px;display:flex;align-items:center;gap:12px}
+  .crest{flex:0 0 auto}
+  .appicon{display:block;border-radius:11px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .htext{flex:1;min-width:0}
+  .htext h1{font-family:Georgia,serif;font-size:19px;line-height:1;color:var(--green-dk)}
+  .htext .estd{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-top:3px}
+  .hcaps{flex:0 0 auto;display:flex;flex-direction:column;gap:4px}
+  .hcaps label{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .hcaps span{white-space:nowrap}
+  .hcaps input{width:44px;font:inherit;font-size:14px;font-weight:700;text-align:center;color:var(--green-dk);border:1px solid var(--hair);border-radius:5px;padding:2px 0;background:#fff;-moz-appearance:textfield}
+  .hcaps input::-webkit-outer-spin-button,.hcaps input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+
+  .meta{display:grid;grid-template-columns:2fr 1fr 1fr;background:var(--card);border:2px solid var(--line);border-top:1px solid var(--hair);border-bottom:none;font-size:11px}
+  .meta>div{padding:5px 12px;border-right:1px solid var(--hair);display:flex;gap:7px;align-items:center;min-width:0}
+  .meta>div:last-child{border-right:none}
+  .meta .k{letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;font-size:9px;flex:0 0 auto}
+  .meta .v{font-weight:700}
+  .meta select{font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:2px 5px;background:#fff;max-width:100%;min-width:0}
+  #course{flex:1}
+
+  .sync{font-size:10px;padding:4px 12px;background:#efece3;border:2px solid var(--line);border-top:none;border-bottom:none;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:center}
+  .sync b{color:var(--green-dk)}
+  .dotstat{width:8px;height:8px;border-radius:50%;background:#bbb;flex:0 0 auto}
+  .dotstat.on{background:#2ea043}
+  .dotstat.off{background:#d1242f}
+
+  .cardwrap{background:var(--card);border:2px solid var(--line);border-top:none}
+  .cardwrap.last{border-radius:0 0 9px 9px}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;table-layout:fixed}
+  col.lbl{width:74px}
+  col.sum{width:30px}
+  th,td{border:1px solid var(--hair);text-align:center;padding:3px 0;white-space:nowrap;overflow:hidden}
+  thead th{background:#efece3;font-weight:700;font-size:10px;color:#2c2c2c}
+  thead th.p3{background:#cfe4f0}
+  thead th.p5{background:#e0dcef}
+  th.hole-label,td.row-label{text-align:left;padding-left:8px;font-weight:700;font-size:10.5px}
+  td.row-label{background:#f5f3ec}
+  tr td.out,tr td.tot,tr.pscore td.out,tr.pscore td.tot,tr.pts td.out{background:#efece3;font-weight:800}
+
+  tr.club td{background:var(--club)}
+  tr.club td.row-label{background:#e9e6dc}
+  tr.par td{background:var(--par);font-weight:700}
+  tr.par td.row-label{background:var(--par)}
+  tr.stroke td{color:#555;font-size:10.5px}
+  tr.stroke td.row-label{color:var(--ink)}
+
+  tr.pscore td.row-label{background:var(--green);color:#fff;font-weight:800;padding:3px 0 3px 8px}
+  tr.pscore td{background:#fff;padding:1px}
+  tr.pscore td.p3{background:#cfe4f0}
+  tr.pscore td.p5{background:#e0dcef}
+  tr.pts td{background:#f5f3ec;color:var(--green-dk);font-weight:700;font-size:10.5px}
+  tr.pts td.row-label{background:#e9e6dc;color:var(--green-dk);font-weight:700}
+
+  .sval{display:flex;align-items:center;justify-content:center;width:100%;height:26px;font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:13px;font-weight:700;position:relative;cursor:pointer;border-radius:4px;-webkit-tap-highlight-color:transparent;color:var(--ink)}
+  .sval:hover{background:rgba(15,92,52,.12)}
+  .sval.empty{color:#cfccc0;font-weight:400}
+  .sval .num{position:relative;z-index:2}
+  .sval.eagle .num{font-weight:800}
+  .sval .ring{position:absolute;inset:3px;pointer-events:none;z-index:1}
+  .sval.birdie .ring{border:2px solid var(--green);border-radius:50%}
+  .sval.eagle .ring{border:2px solid var(--gold);border-radius:50%}
+  .sval.eagle .ring::after{content:"";position:absolute;inset:-3px;z-index:1;border:2px solid var(--gold);border-radius:50%}
+  .sval input{width:100%;height:26px;border:2px solid var(--green);border-radius:4px;text-align:center;font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:13px;font-weight:700;color:var(--ink);padding:0;outline:none;background:#fff;-moz-appearance:textfield}
+  .sval input::-webkit-outer-spin-button,.sval input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .sval .rs{position:absolute;top:0;right:2px;font-size:8px;line-height:1;color:var(--clay);z-index:2;letter-spacing:-1px}
+  td.holewon{background:var(--win)!important;position:relative}
+  td.holewon::after{content:"";position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+  .lower{margin-top:8px}
+  .status{background:var(--green);color:#fff;border-radius:9px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .status .lead{font-family:Georgia,serif;font-size:17px;font-weight:700}
+  .status .lead b{color:var(--champ)}
+  .status .totals{display:flex;gap:14px}
+  .status .totals div{text-align:center}
+  .status .totals .nm{font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+  .status .totals .sc{font-family:Georgia,serif;font-size:15px;font-weight:700}
+
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:10.5px;color:var(--dim)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .lg{width:14px;height:14px;display:inline-block;border-radius:50%}
+  .lg.e{border:2px solid var(--gold);box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 4px var(--gold)}
+  .lg.b{border:2px solid var(--green)}
+
+  .actions{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .actions button{font:inherit;font-weight:700;font-size:12px;padding:8px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--green-dk);background:transparent;color:var(--green-dk)}
+  .actions button.primary{background:var(--green);color:#fff}
+  .actions button:active{transform:translateY(1px)}
+  .foot{text-align:center;font-size:10px;color:var(--dim);margin-top:10px;line-height:1.6}
+  .foot b{color:#444}
+  .foot code{background:#e9e6dc;padding:1px 4px;border-radius:3px;font-size:9.5px}
+
+  @media(max-width:640px){
+    col.lbl{width:58px}
+    .htext h1{font-size:16px}
+    .sval,.sval input{height:24px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="crest">
+      <img src="golf-icon.png" alt="Score" width="48" height="48" class="appicon">
+    </div>
+    <div class="htext">
+      <h1 id="courseName">Kloof Country Club</h1>
+      <div class="estd" id="courseSub">Match Play · Stableford</div>
+    </div>
+    <div class="hcaps">
+      <label><span>Gav H'cap</span><input type="number" id="hc-gav" min="0" max="54" value="0"></label>
+      <label><span>Phil H'cap</span><input type="number" id="hc-phil" min="0" max="54" value="0"></label>
+    </div>
+  </header>
+
+  <div class="meta">
+    <div><span class="k">Course</span>
+      <select id="course"></select>
+    </div>
+    <div><span class="k">Tee</span><span class="v" id="teeLabel">White</span></div>
+    <div><span class="k">Date</span><span class="v" id="today">Today</span></div>
+  </div>
+
+  <div class="sync"><span class="dotstat" id="syncDot"></span><span id="syncMsg">Local only — scores saved on this device</span></div>
+
+  <div class="cardwrap"><table id="front"></table></div>
+  <div class="cardwrap last"><table id="back"></table></div>
+
+  <div class="lower">
+    <div class="status" id="status">
+      <div class="lead" id="lead">All square</div>
+      <div class="totals">
+        <div><div class="nm">Gav</div><div class="sc" id="gav-sc">–</div></div>
+        <div><div class="nm">Phil</div><div class="sc" id="phil-sc">–</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="lg" style="border-radius:2px;background:#cfe4f0"></i> Par 3</span>
+    <span><i class="lg" style="border-radius:2px;background:#e0dcef"></i> Par 5</span>
+    <span><i class="lg e"></i> Eagle</span>
+    <span><i class="lg b"></i> Birdie</span>
+    <span><i class="lg" style="background:var(--win)"></i> Hole won</span>
+    <span><i class="lg" style="background:var(--clay)"></i> Stroke received</span>
+  </div>
+
+  <div class="actions">
+    <button class="primary" id="newGame">New game</button>
+    <button id="reset">Clear scores</button>
+  </div>
+
+  <div class="foot">
+    <b>Stableford</b> uses net score (2 pts = net par). Strokes shown as dots by stroke index.<br>
+    <span id="gameId"></span>
+  </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   SUPABASE CONFIG  —  paste your project values here
+   (Project Settings → API in the Supabase dashboard)
+   Leave as-is to run in LOCAL-ONLY mode (device storage).
+   ============================================================ */
+const SUPABASE_URL = "";      // e.g. "https://xxxx.supabase.co"
+const SUPABASE_ANON_KEY = ""; // e.g. "eyJhbGci..."
+/* ============================================================ */
+const COURSES={
+  kloof:{name:"Kloof Country Club",loc:"Kloof, KZN",tee:"White",par:70,holes:[{n:1,d:141,par:4,si:14},{n:2,d:346,par:4,si:6},{n:3,d:139,par:3,si:18},{n:4,d:381,par:4,si:4},{n:5,d:485,par:5,si:12},{n:6,d:361,par:4,si:2},{n:7,d:442,par:5,si:16},{n:8,d:341,par:4,si:8},{n:9,d:357,par:4,si:10},{n:10,d:306,par:4,si:15},{n:11,d:182,par:3,si:7},{n:12,d:362,par:4,si:3},{n:13,d:505,par:5,si:5},{n:14,d:388,par:4,si:1},{n:15,d:343,par:4,si:9},{n:16,d:155,par:3,si:13},{n:17,d:452,par:5,si:11},{n:18,d:291,par:4,si:17}]},
+  durban:{name:"Durban Country Club",loc:"Durban, KZN",tee:"Yellow",par:72,holes:[{n:1,d:354,par:4,si:5},{n:2,d:172,par:3,si:13},{n:3,d:468,par:5,si:9},{n:4,d:165,par:3,si:17},{n:5,d:420,par:4,si:1},{n:6,d:322,par:4,si:11},{n:7,d:340,par:4,si:7},{n:8,d:458,par:5,si:15},{n:9,d:397,par:4,si:3},{n:10,d:512,par:5,si:8},{n:11,d:439,par:4,si:2},{n:12,d:143,par:3,si:12},{n:13,d:310,par:4,si:14},{n:14,d:482,par:5,si:10},{n:15,d:177,par:3,si:16},{n:16,d:381,par:4,si:4},{n:17,d:367,par:4,si:6},{n:18,d:250,par:4,si:18}]},
+  rjhb:{name:"Royal Johannesburg & Kensington (East)",loc:"Johannesburg",tee:"Blue",par:72,holes:[{n:1,d:432,par:5,si:18},{n:2,d:211,par:3,si:6},{n:3,d:420,par:4,si:4},{n:4,d:398,par:4,si:2},{n:5,d:148,par:3,si:12},{n:6,d:485,par:5,si:14},{n:7,d:384,par:4,si:10},{n:8,d:463,par:5,si:16},{n:9,d:356,par:4,si:8},{n:10,d:433,par:4,si:3},{n:11,d:418,par:4,si:1},{n:12,d:166,par:3,si:9},{n:13,d:351,par:4,si:7},{n:14,d:378,par:4,si:11},{n:15,d:402,par:4,si:5},{n:16,d:174,par:3,si:13},{n:17,d:324,par:4,si:15},{n:18,d:461,par:5,si:17}]},
+  mowbray:{name:"King David Mowbray",loc:"Cape Town",tee:"Blue",par:71,holes:[{n:1,d:371,par:4,si:3},{n:2,d:318,par:4,si:15},{n:3,d:490,par:5,si:6},{n:4,d:134,par:3,si:18},{n:5,d:379,par:4,si:2},{n:6,d:315,par:4,si:11},{n:7,d:413,par:4,si:1},{n:8,d:165,par:3,si:10},{n:9,d:315,par:4,si:17},{n:10,d:174,par:3,si:8},{n:11,d:385,par:4,si:4},{n:12,d:500,par:5,si:5},{n:13,d:369,par:4,si:9},{n:14,d:342,par:4,si:12},{n:15,d:380,par:4,si:7},{n:16,d:326,par:4,si:16},{n:17,d:351,par:4,si:13},{n:18,d:279,par:4,si:14}]}
+};
+
+// ---------- state ----------
+let courseKey = "kloof";
+let HOLES = COURSES[courseKey].holes;
+const scores = { gav:{}, phil:{} };
+const hcap = { gav:0, phil:0 };
+let gameId = getGameId();
+let sb = null, channel = null, online = false;
+
+function getGameId(){
+  const u = new URL(location.href);
+  let g = u.searchParams.get("game");
+  if(!g){
+    g = localStorage.getItem("lastGame") || ("g" + Math.random().toString(36).slice(2,8));
+  }
+  localStorage.setItem("lastGame", g);
+  // reflect in URL so it can be shared
+  u.searchParams.set("game", g);
+  history.replaceState(null,"",u);
+  return g;
+}
+
+// ---------- stableford / strokes ----------
+function strokesOnHole(hc,si){let s=0;if(hc>=si)s++;if(hc>=si+18)s++;if(hc>=si+36)s++;return s;}
+function stablefordHole(who,h){
+  const g=scores[who][h.n]; if(g==null)return null;
+  const net=g-strokesOnHole(hcap[who],h.si);
+  return Math.max(0, 2-(net-h.par));
+}
+function stablefordTotal(who,a,b){let s=0,any=false;HOLES.forEach(h=>{if(h.n>=a&&h.n<=b){const p=stablefordHole(who,h);if(p!=null){s+=p;any=true;}}});return any?s:0;}
+
+// ---------- render ----------
+const seg=(a,b)=>HOLES.filter(h=>h.n>=a&&h.n<=b);
+const tot=(arr,key)=>arr.reduce((s,h)=>s+h[key],0);
+
+function head(from,to,label){
+  let c=seg(from,to).map(h=>{const cls=h.par===3?' class="p3"':h.par===5?' class="p5"':'';return `<th${cls}>${h.n}</th>`;}).join('');
+  return `<colgroup><col class="lbl">${seg(from,to).map(()=>'<col>').join('')}<col class="sum"></colgroup>
+    <thead><tr><th class="hole-label">Hole</th>${c}<th class="out">${label}</th></tr></thead>`;
+}
+function distRow(from,to){
+  let c=seg(from,to).map(h=>`<td>${h.d}</td>`).join('');
+  return `<tr class="club"><td class="row-label">${COURSES[courseKey].tee}</td>${c}<td class="out">${tot(seg(from,to),'d')}</td></tr>`;
+}
+function parRow(from,to){
+  let c=seg(from,to).map(h=>`<td>${h.par}</td>`).join('');
+  return `<tr class="par"><td class="row-label">Par</td>${c}<td class="out">${tot(seg(from,to),'par')}</td></tr>`;
+}
+function siRow(from,to){
+  let c=seg(from,to).map(h=>`<td>${h.si}</td>`).join('');
+  return `<tr class="stroke"><td class="row-label">Stroke</td>${c}<td class="out"></td></tr>`;
+}
+function playerRow(who,from,to){
+  let c=seg(from,to).map(h=>{
+    const v=scores[who][h.n],par=h.par;let cls='empty';
+    if(v!=null){const d=v-par;cls=d<=-2?'eagle':d===-1?'birdie':d===0?'par':d===1?'bogey':'dbl';}
+    const o=scores.gav[h.n],p=scores.phil[h.n];let won='';
+    if(o!=null&&p!=null){if(who==='gav'&&o<p)won=' holewon';if(who==='phil'&&p<o)won=' holewon';}
+    const tint=h.par===3?' p3':h.par===5?' p5':'';
+    const rs=strokesOnHole(hcap[who],h.si);
+    const dots=rs>0?`<span class="rs">${'•'.repeat(rs)}</span>`:'';
+    return `<td class="${tint}${won}"><span class="sval ${cls}" data-who="${who}" data-h="${h.n}" role="button" tabindex="0">${dots}<span class="ring"></span><span class="num">${v==null?'·':v}</span></span></td>`;
+  }).join('');
+  return `<tr class="pscore"><td class="row-label">${who==='gav'?'Gav':'Phil'}</td>${c}<td class="out">${psum(who,from,to)||''}</td></tr>`;
+}
+function pointsRow(who,from,to){
+  let c=seg(from,to).map(h=>{const p=stablefordHole(who,h);return `<td>${p==null?'·':p}</td>`;}).join('');
+  return `<tr class="pts"><td class="row-label">${who==='gav'?'Gav':'Phil'} pts</td>${c}<td class="out">${stablefordTotal(who,from,to)||''}</td></tr>`;
+}
+function psum(who,a,b){let s=0,any=false;HOLES.forEach(h=>{if(h.n>=a&&h.n<=b&&scores[who][h.n]!=null){s+=scores[who][h.n];any=true;}});return any?s:0;}
+
+function nineHTML(from,to,label){
+  return head(from,to,label)+'<tbody>'+distRow(from,to)+parRow(from,to)+siRow(from,to)+
+    playerRow('gav',from,to)+pointsRow('gav',from,to)+playerRow('phil',from,to)+pointsRow('phil',from,to)+'</tbody>';
+}
+
+function editCell(el){
+  if(el.querySelector('input'))return;
+  const who=el.dataset.who,h=+el.dataset.h,cur=scores[who][h];
+  el.innerHTML=`<input type="number" inputmode="numeric" min="1" max="15" value="${cur==null?'':cur}">`;
+  const inp=el.querySelector('input');inp.focus();inp.select();
+  const commit=()=>{
+    const raw=inp.value.trim();
+    if(raw==='')delete scores[who][h];
+    else{let n=parseInt(raw,10);if(!isNaN(n)&&n>0)scores[who][h]=Math.min(n,15);}
+    saveHole(who,h,scores[who][h]??null);
+    build();
+  };
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}else if(e.key==='Escape'){e.preventDefault();build();}});
+}
+
+function build(){
+  document.getElementById('front').innerHTML=nineHTML(1,9,'OUT');
+  document.getElementById('back').innerHTML=nineHTML(10,18,'IN');
+  document.querySelectorAll('.sval').forEach(el=>{
+    el.addEventListener('click',()=>editCell(el));
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();editCell(el);}});
+  });
+  status();
+  persistLocal();
+}
+function status(){
+  let up=0;
+  HOLES.forEach(h=>{const a=scores.gav[h.n],b=scores.phil[h.n];if(a!=null&&b!=null){if(a<b)up++;else if(b<a)up--;}});
+  const gP=stablefordTotal('gav',1,18),pP=stablefordTotal('phil',1,18);
+  const gG=psum('gav',1,18),pG=psum('phil',1,18);
+  document.getElementById('gav-sc').textContent=gG?`${gG} · ${gP} pts`:'–';
+  document.getElementById('phil-sc').textContent=pG?`${pG} · ${pP} pts`:'–';
+  const lead=document.getElementById('lead');
+  if(up>0)lead.innerHTML=`<b>Gav</b> — ${up} up`;
+  else if(up<0)lead.innerHTML=`<b>Phil</b> — ${-up} up`;
+  else lead.textContent='All square';
+}
+
+// ---------- course switching ----------
+function loadCourse(key){
+  courseKey=key; HOLES=COURSES[key].holes;
+  document.getElementById('courseName').textContent=COURSES[key].name;
+  document.getElementById('courseSub').textContent=`Match Play · Stableford · Par ${COURSES[key].par} · ${COURSES[key].loc}`;
+  document.getElementById('teeLabel').textContent=COURSES[key].tee;
+  build();
+}
+
+// ---------- local persistence ----------
+function lsKey(){return `sc:${gameId}`;}
+function persistLocal(){
+  try{localStorage.setItem(lsKey(),JSON.stringify({courseKey,scores,hcap}));}catch(e){}
+}
+function restoreLocal(){
+  try{
+    const raw=localStorage.getItem(lsKey());
+    if(!raw)return false;
+    const d=JSON.parse(raw);
+    if(d.courseKey&&COURSES[d.courseKey])courseKey=d.courseKey;
+    Object.assign(scores.gav,d.scores?.gav||{});
+    Object.assign(scores.phil,d.scores?.phil||{});
+    if(d.hcap){hcap.gav=d.hcap.gav||0;hcap.phil=d.hcap.phil||0;}
+    return true;
+  }catch(e){return false;}
+}
+
+// ---------- Supabase sync ----------
+async function initSupabase(){
+  const dot=document.getElementById('syncDot'),msg=document.getElementById('syncMsg');
+  if(!SUPABASE_URL||!SUPABASE_ANON_KEY||!window.supabase){
+    dot.className='dotstat off';
+    msg.innerHTML='Local only — add Supabase keys to sync live';
+    return;
+  }
+  try{
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    // load existing rows for this game
+    const {data,error}=await sb.from('scores').select('*').eq('game_id',gameId);
+    if(error)throw error;
+    if(data&&data.length){
+      data.forEach(r=>{if(r.player==='__meta'){if(COURSES[r.course])courseKey=r.course;hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;}
+        else if(scores[r.player]){scores[r.player][r.hole]=r.strokes;}});
+    }else{
+      // push current meta so the row exists
+      await pushMeta();
+    }
+    // realtime subscription
+    channel=sb.channel('game-'+gameId)
+      .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
+        const r=payload.new; if(!r)return;
+        if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;}
+        else if(scores[r.player]){if(r.strokes==null)delete scores[r.player][r.hole];else scores[r.player][r.hole]=r.strokes;}
+        build();
+      }).subscribe();
+    online=true;
+    dot.className='dotstat on';
+    msg.innerHTML=`Live sync on · game <b>${gameId}</b>`;
+    document.getElementById('course').value=courseKey;
+    loadCourse(courseKey);
+  }catch(e){
+    console.error(e);
+    dot.className='dotstat off';
+    msg.innerHTML='Sync error — running local only';
+  }
+}
+async function saveHole(who,hole,strokes){
+  persistLocal();
+  if(!online||!sb)return;
+  try{await sb.from('scores').upsert({game_id:gameId,player:who,hole,strokes},{onConflict:'game_id,player,hole'});}
+  catch(e){console.error(e);}
+}
+async function pushMeta(){
+  persistLocal();
+  if(!online||!sb)return;
+  try{await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil},{onConflict:'game_id,player,hole'});}
+  catch(e){console.error(e);}
+}
+
+// ---------- UI wiring ----------
+function buildCourseDropdown(){
+  const sel=document.getElementById('course');
+  sel.innerHTML=Object.keys(COURSES).map(k=>`<option value="${k}">${COURSES[k].name}</option>`).join('');
+  sel.value=courseKey;
+  sel.onchange=e=>{loadCourse(e.target.value);pushMeta();};
+}
+document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
+document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
+document.getElementById('reset').onclick=async()=>{
+  if(!confirm('Clear all scores for this game?'))return;
+  scores.gav={};scores.phil={};build();
+  if(online&&sb){try{await sb.from('scores').delete().eq('game_id',gameId).neq('player','__meta');}catch(e){}}
+};
+document.getElementById('newGame').onclick=()=>{
+  const g="g"+Math.random().toString(36).slice(2,8);
+  const u=new URL(location.href);u.searchParams.set('game',g);location.href=u.toString();
+};
+document.getElementById('today').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+document.getElementById('gameId').innerHTML=`Game <code>${gameId}</code> — share this link so Gav & Phil see the same card.`;
+
+// ---------- boot ----------
+restoreLocal();
+document.getElementById('hc-gav').value=hcap.gav;
+document.getElementById('hc-phil').value=hcap.phil;
+buildCourseDropdown();
+loadCourse(courseKey);
+initSupabase();
+</script>
+</body>
+</html>
