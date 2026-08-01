@@ -35,7 +35,8 @@ and host on GitHub Pages.
 | `index.html` | The whole app (HTML + CSS + JS in one file) |
 | `sw.js` | Service worker — offline cache + auto-update |
 | `golf-icon.png` | App / favicon / home-screen icon |
-| `supabase.sql` | Table + policies to paste into the Supabase SQL editor |
+| `supabase.sql` | Scores table + policies for live scoring |
+| `courses.sql` | Course catalogue tables + the six built-in courses |
 | `SETUP.md` | Step-by-step Supabase + GitHub Pages setup |
 
 ## Hosting on GitHub Pages

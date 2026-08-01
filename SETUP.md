@@ -113,3 +113,40 @@ the old cache and forces every device to pull the fresh files.
 > Note: the service worker only runs over **https** (GitHub Pages is https) or
 > on `localhost`. Opening the file directly from disk won't register it, but the
 > app still works — it just won't auto-update until it's hosted.
+
+---
+
+## Adding courses (via the database)
+
+Courses live in two Supabase tables so you can add new ones **without editing
+the app**:
+
+- `courses` — one row per course (`id`, `name`, `location`, `tee`, `par`, `active`)
+- `course_holes` — 18 rows per course (`course_id`, `hole`, `distance`, `par`, `stroke_index`)
+
+**One-time setup:** run `courses.sql` (SQL Editor → paste → Run). It creates the
+tables, sets read access + realtime, and seeds the six built-in courses.
+
+**To add a course later**, run something like this (SQL Editor), or use the
+Supabase Table Editor to add the rows by hand:
+
+```sql
+insert into public.courses (id, name, location, tee, par)
+values ('mynewcourse', 'My New Course', 'Town, Prov', 'White', 72);
+
+insert into public.course_holes (course_id, hole, distance, par, stroke_index) values
+  ('mynewcourse', 1, 370, 4, 5),
+  ('mynewcourse', 2, 150, 3, 15),
+  -- ... holes 3–17 ...
+  ('mynewcourse', 18, 410, 4, 8);
+```
+
+Rules the app expects:
+- Exactly **18 holes** per course (courses with fewer are ignored).
+- `stroke_index` values **1–18, each used once**.
+- `distance` is in **metres** (convert yards × 0.9144 if needed).
+- Set a course's `active` to `false` to hide it without deleting.
+
+The app reads the catalogue from the database on load (and falls back to the
+six built-in courses when offline or before `courses.sql` has been run). New
+courses appear next time the app is opened.
