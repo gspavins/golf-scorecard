@@ -33,7 +33,7 @@
   .hcaps input{width:44px;font:inherit;font-size:14px;font-weight:700;text-align:center;color:var(--green-dk);border:1px solid var(--hair);border-radius:5px;padding:2px 0;background:#fff;-moz-appearance:textfield}
   .hcaps input::-webkit-outer-spin-button,.hcaps input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 
-  .meta{display:grid;grid-template-columns:2fr 1fr 1fr;background:var(--card);border:2px solid var(--line);border-top:1px solid var(--hair);border-bottom:none;font-size:11px}
+  .meta{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border:2px solid var(--line);border-top:1px solid var(--hair);border-bottom:none;font-size:11px}
   .meta>div{padding:5px 12px;border-right:1px solid var(--hair);display:flex;gap:7px;align-items:center;min-width:0}
   .meta>div:last-child{border-right:none}
   .meta .k{letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;font-size:9px;flex:0 0 auto}
@@ -104,7 +104,8 @@
   .sval:hover{background:rgba(15,92,52,.12)}
   .sval.empty{color:#cfccc0;font-weight:400}
   .sval .num{position:relative;z-index:2}
-  .sval .num.capped{color:#a8a49a}
+  .sval.capped .num{color:var(--ladies,#e2001a);font-weight:800}
+  .sval.capped .ring{border:2px solid #e2001a;border-radius:50%}
   .sval.eagle .num{font-weight:800}
   .sval .ring{position:absolute;inset:3px;pointer-events:none;z-index:1}
   .sval.birdie .ring{border:2px solid var(--green);border-radius:50%}
@@ -116,8 +117,8 @@
   td.holewon{background:var(--win)!important;position:relative}
   td.holewon::after{content:"";position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--green)}
 
-  .lower{margin-top:8px}
-  .status{background:var(--green);color:#fff;border-radius:9px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .lower{margin-top:6px}
+  .status{background:var(--green);color:#fff;border-radius:9px;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
   .status .lead{font-family:Georgia,serif;font-size:17px;font-weight:700}
   .status .lead b{color:var(--champ)}
   .status .totals{display:flex;gap:14px}
@@ -125,24 +126,27 @@
   .status .totals .nm{font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
   .status .totals .sc{font-family:Georgia,serif;font-size:15px;font-weight:700}
 
-  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:10.5px;color:var(--dim)}
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:6px;font-size:10.5px;color:var(--dim)}
   .legend span{display:inline-flex;align-items:center;gap:5px}
   .lg{width:14px;height:14px;display:inline-block;border-radius:50%}
   .lg.e{border:2px solid var(--gold);box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 4px var(--gold)}
   .lg.b{border:2px solid var(--green)}
 
-  .actions{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .actions{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
   .actions button{font:inherit;font-weight:700;font-size:12px;padding:8px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--green-dk);background:transparent;color:var(--green-dk)}
   .actions button.primary{background:var(--green);color:#fff}
   .actions button:active{transform:translateY(1px)}
-  .foot{text-align:center;font-size:10px;color:var(--dim);margin-top:10px;line-height:1.6}
+  .foot{text-align:center;font-size:10px;color:var(--dim);margin-top:6px;line-height:1.5}
   .foot b{color:#444}
   .foot code{background:#e9e6dc;padding:1px 4px;border-radius:3px;font-size:9.5px}
 
   @media(max-width:640px){
-    col.lbl{width:58px}
+    body{padding:5px}
+    col.lbl{width:54px}
     .htext h1{font-size:16px}
-    .sval,.sval input{height:24px;font-size:13px}
+    .sval,.sval input{height:30px;font-size:15px}
+    th,td{padding:4px 0}
+    .legend{gap:12px}
   }
 </style>
 </head>
@@ -167,7 +171,6 @@
     <div><span class="k">Course</span>
       <select id="course"></select>
     </div>
-    <div><span class="k">Tee</span><span class="v" id="teeLabel">White</span></div>
     <div><span class="k">Date</span><input type="date" id="gameDateInput" class="v"></div>
   </div>
 
@@ -188,13 +191,10 @@
   </div>
 
   <div class="legend">
-    <span><i class="lg" style="border-radius:2px;background:#cfe4f0"></i> Par 3</span>
-    <span><i class="lg" style="border-radius:2px;background:#e0dcef"></i> Par 5</span>
     <span><i class="lg e"></i> Eagle</span>
     <span><i class="lg b"></i> Birdie</span>
     <span><i class="lg" style="background:var(--win)"></i> Hole won</span>
-    <span><i class="lg" style="background:var(--clay)"></i> Stroke received</span>
-    <span><i class="lg" style="background:#a8a49a"></i> Over max (0 pts)</span>
+    <span><i class="lg" style="border:2px solid #e2001a"></i> Max (0 pts)</span>
   </div>
 
   <div class="actions">
@@ -204,7 +204,6 @@
   </div>
 
   <div class="foot">
-    <b>Stableford</b> uses net score (2 pts = net par). Strokes shown as dots by stroke index.<br>
     <span id="gameId"></span>
   </div>
 
@@ -307,14 +306,16 @@ function siRow(from,to){
 function playerRow(who,from,to){
   let c=seg(from,to).map(h=>{
     const v=scores[who][h.n],par=h.par;let cls='empty';
-    if(v!=null){const d=v-par;cls=d<=-2?'eagle':d===-1?'birdie':d===0?'par':d===1?'bogey':'dbl';}
-    const o=scores.gav[h.n],p=scores.phil[h.n];let won='';
+    const capped=v!=null&&isCapped(who,h);
+    const shown=capped?maxScore(who,h):v;
+    if(v!=null){const d=shown-par;cls=d<=-2?'eagle':d===-1?'birdie':d===0?'par':d===1?'bogey':'dbl';}
+    if(capped)cls='capped';
+    const o=shownScore('gav',h),p=shownScore('phil',h);let won='';
     if(o!=null&&p!=null){if(who==='gav'&&o<p)won=' holewon';if(who==='phil'&&p<o)won=' holewon';}
     const tint=h.par===3?' p3':h.par===5?' p5':'';
     const rs=strokesOnHole(hcap[who],h.si);
     const dots=rs>0?`<span class="rs">${'•'.repeat(rs)}</span>`:'';
-    const capped=v!=null&&isCapped(who,h)?' capped':'';
-    return `<td class="${tint}${won}"><span class="sval ${cls}" data-who="${who}" data-h="${h.n}" role="button" tabindex="0">${dots}<span class="ring"></span><span class="num${capped}">${v==null?'·':v}</span></span></td>`;
+    return `<td class="${tint}${won}"><span class="sval ${cls}" data-who="${who}" data-h="${h.n}" role="button" tabindex="0">${dots}<span class="ring"></span><span class="num">${v==null?'·':shown}</span></span></td>`;
   }).join('');
   return `<tr class="pscore"><td class="row-label">${who==='gav'?'Gav':'Phil'}</td>${c}<td class="out">${psum(who,from,to)||''}</td></tr>`;
 }
@@ -322,7 +323,9 @@ function pointsRow(who,from,to){
   let c=seg(from,to).map(h=>{const p=stablefordHole(who,h);return `<td>${p==null?'·':p}</td>`;}).join('');
   return `<tr class="pts"><td class="row-label">${who==='gav'?'Gav':'Phil'} pts</td>${c}<td class="out">${stablefordTotal(who,from,to)||''}</td></tr>`;
 }
-function psum(who,a,b){let s=0,any=false;HOLES.forEach(h=>{if(h.n>=a&&h.n<=b&&scores[who][h.n]!=null){s+=scores[who][h.n];any=true;}});return any?s:0;}
+// the value shown in the cell (capped to net double bogey when exceeded)
+function shownScore(who,h){const v=scores[who][h.n];if(v==null)return null;return isCapped(who,h)?maxScore(who,h):v;}
+function psum(who,a,b){let s=0,any=false;HOLES.forEach(h=>{if(h.n>=a&&h.n<=b){const v=shownScore(who,h);if(v!=null){s+=v;any=true;}}});return any?s:0;}
 
 function nineHTML(from,to,label){
   return head(from,to,label)+'<tbody>'+distRow(from,to)+parRow(from,to)+siRow(from,to)+
@@ -357,7 +360,7 @@ function build(){
 }
 function status(){
   let up=0;
-  HOLES.forEach(h=>{const a=scores.gav[h.n],b=scores.phil[h.n];if(a!=null&&b!=null){if(a<b)up++;else if(b<a)up--;}});
+  HOLES.forEach(h=>{const a=shownScore('gav',h),b=shownScore('phil',h);if(a!=null&&b!=null){if(a<b)up++;else if(b<a)up--;}});
   const gP=stablefordTotal('gav',1,18),pP=stablefordTotal('phil',1,18);
   const gG=psum('gav',1,18),pG=psum('phil',1,18);
   document.getElementById('gav-sc').textContent=gG?`${gG} · ${gP} pts`:'–';
@@ -373,7 +376,6 @@ function loadCourse(key){
   courseKey=key; HOLES=COURSES[key].holes;
   document.getElementById('courseName').textContent=COURSES[key].name;
   document.getElementById('courseSub').textContent=`Match Play · Stableford · Par ${COURSES[key].par} · ${COURSES[key].loc}`;
-  document.getElementById('teeLabel').textContent=COURSES[key].tee;
   build();
 }
 
