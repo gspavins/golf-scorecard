@@ -104,6 +104,7 @@
   .sval:hover{background:rgba(15,92,52,.12)}
   .sval.empty{color:#cfccc0;font-weight:400}
   .sval .num{position:relative;z-index:2}
+  .sval .num.capped{color:#a8a49a}
   .sval.eagle .num{font-weight:800}
   .sval .ring{position:absolute;inset:3px;pointer-events:none;z-index:1}
   .sval.birdie .ring{border:2px solid var(--green);border-radius:50%}
@@ -193,6 +194,7 @@
     <span><i class="lg b"></i> Birdie</span>
     <span><i class="lg" style="background:var(--win)"></i> Hole won</span>
     <span><i class="lg" style="background:var(--clay)"></i> Stroke received</span>
+    <span><i class="lg" style="background:#a8a49a"></i> Over max (0 pts)</span>
   </div>
 
   <div class="actions">
@@ -227,8 +229,8 @@
    (Project Settings → API in the Supabase dashboard)
    Leave as-is to run in LOCAL-ONLY mode (device storage).
    ============================================================ */
-const SUPABASE_URL = "https://ydejaktiyrcwsvwdgxpb.supabase.co/rest/v1/";      // e.g. "https://xxxx.supabase.co"
-const SUPABASE_ANON_KEY = "sb_publishable_DIpdPuQTWun5RqKD0DleSA_oRErvGb9"; // e.g. "eyJhbGci..."
+const SUPABASE_URL = "https://ydejaktiyrcwsvwdgxpb.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_DIpdPuQTWun5RqKD0DleSA_oRErvGb9";
 /* ============================================================ */
 const COURSES={
   kloof:{name:"Kloof Country Club",loc:"Kloof, KZN",tee:"White",par:70,holes:[{n:1,d:141,par:4,si:14},{n:2,d:346,par:4,si:6},{n:3,d:139,par:3,si:18},{n:4,d:381,par:4,si:4},{n:5,d:485,par:5,si:12},{n:6,d:361,par:4,si:2},{n:7,d:442,par:5,si:16},{n:8,d:341,par:4,si:8},{n:9,d:357,par:4,si:10},{n:10,d:306,par:4,si:15},{n:11,d:182,par:3,si:7},{n:12,d:362,par:4,si:3},{n:13,d:505,par:5,si:5},{n:14,d:388,par:4,si:1},{n:15,d:343,par:4,si:9},{n:16,d:155,par:3,si:13},{n:17,d:452,par:5,si:11},{n:18,d:291,par:4,si:17}]},
@@ -271,6 +273,9 @@ function getGameId(){
 
 // ---------- stableford / strokes ----------
 function strokesOnHole(hc,si){let s=0;if(hc>=si)s++;if(hc>=si+18)s++;if(hc>=si+36)s++;return s;}
+// max score that still scores a Stableford point = net double bogey
+function maxScore(who,h){return h.par+strokesOnHole(hcap[who],h.si)+2;}
+function isCapped(who,h){const g=scores[who][h.n];return g!=null && g>=maxScore(who,h);}
 function stablefordHole(who,h){
   const g=scores[who][h.n]; if(g==null)return null;
   const net=g-strokesOnHole(hcap[who],h.si);
@@ -308,7 +313,8 @@ function playerRow(who,from,to){
     const tint=h.par===3?' p3':h.par===5?' p5':'';
     const rs=strokesOnHole(hcap[who],h.si);
     const dots=rs>0?`<span class="rs">${'•'.repeat(rs)}</span>`:'';
-    return `<td class="${tint}${won}"><span class="sval ${cls}" data-who="${who}" data-h="${h.n}" role="button" tabindex="0">${dots}<span class="ring"></span><span class="num">${v==null?'·':v}</span></span></td>`;
+    const capped=v!=null&&isCapped(who,h)?' capped':'';
+    return `<td class="${tint}${won}"><span class="sval ${cls}" data-who="${who}" data-h="${h.n}" role="button" tabindex="0">${dots}<span class="ring"></span><span class="num${capped}">${v==null?'·':v}</span></span></td>`;
   }).join('');
   return `<tr class="pscore"><td class="row-label">${who==='gav'?'Gav':'Phil'}</td>${c}<td class="out">${psum(who,from,to)||''}</td></tr>`;
 }
