@@ -15,6 +15,8 @@ card from different phones.
 - **Tap-to-enter** scores; birdies/eagles ring automatically; won holes shade.
 - **Live sync (optional)** via Supabase — share the `?game=` link and both
   phones update in real time. Works fully offline/local with no setup.
+- **Game history** — pick a date, browse previous rounds, reopen any one to
+  view or edit its scores, then jump back to the round in progress.
 - **Installable** — "Add to Home Screen" gives it the app icon.
 
 ## Quick start

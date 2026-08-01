@@ -40,6 +40,32 @@
   .meta .v{font-weight:700}
   .meta select{font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:2px 5px;background:#fff;max-width:100%;min-width:0}
   #course{flex:1}
+  #gameDateInput{font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:2px 5px;background:#fff;color:var(--ink);max-width:100%;min-width:0}
+
+  /* game browser modal */
+  .modal{position:fixed;inset:0;background:rgba(20,25,22,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+  .modal[hidden]{display:none}
+  .sheet{background:var(--card);width:100%;max-width:520px;max-height:82vh;border-radius:14px 14px 0 0;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.3)}
+  @media(min-width:560px){.modal{align-items:center}.sheet{border-radius:14px}}
+  .sheethead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--hair);font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--green-dk)}
+  .sheethead .x{background:none;border:none;font-size:24px;line-height:1;color:var(--dim);cursor:pointer;padding:0 4px}
+  .gamelist{overflow-y:auto;padding:8px}
+  .grow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--hair);border-radius:9px;margin-bottom:8px;cursor:pointer;background:#fff}
+  .grow:hover{background:#f4f2ea}
+  .grow.current{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+  .grow .gmain{flex:1;min-width:0}
+  .grow .gdate{font-weight:800;font-size:13px;color:var(--ink)}
+  .grow .gcourse{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grow .gpts{text-align:right;font-size:11px;color:var(--green-dk);font-weight:700;white-space:nowrap}
+  .grow .gpts b{font-family:Georgia,serif;font-size:14px}
+  .grow .gtag{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--green);border-radius:4px;padding:1px 5px;margin-left:6px}
+  .gdel{background:none;border:none;color:var(--clay);font-size:16px;cursor:pointer;padding:2px 6px;flex:0 0 auto}
+  .gempty{text-align:center;color:var(--dim);padding:24px;font-size:13px}
+  .sheetfoot{padding:12px 16px;border-top:1px solid var(--hair)}
+  .sheetfoot button{width:100%;font:inherit;font-weight:700;font-size:13px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--green-dk);background:var(--green);color:#fff}
+  .viewbanner{background:var(--gold);color:#3a2c00;text-align:center;font-size:11px;font-weight:700;padding:5px;border:2px solid var(--line);border-top:none}
+  .viewbanner[hidden]{display:none}
+  .viewbanner button{margin-left:8px;font:inherit;font-weight:700;font-size:11px;background:#3a2c00;color:var(--gold);border:none;border-radius:4px;padding:2px 8px;cursor:pointer}
 
   .sync{font-size:10px;padding:4px 12px;background:#efece3;border:2px solid var(--line);border-top:none;border-bottom:none;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:center}
   .sync b{color:var(--green-dk)}
@@ -141,10 +167,11 @@
       <select id="course"></select>
     </div>
     <div><span class="k">Tee</span><span class="v" id="teeLabel">White</span></div>
-    <div><span class="k">Date</span><span class="v" id="today">Today</span></div>
+    <div><span class="k">Date</span><input type="date" id="gameDateInput" class="v"></div>
   </div>
 
   <div class="sync"><span class="dotstat" id="syncDot"></span><span id="syncMsg">Local only — scores saved on this device</span></div>
+  <div class="viewbanner" id="viewBanner" hidden>Viewing a past round — edits save to it <button id="returnLive">Return to live round</button></div>
 
   <div class="cardwrap"><table id="front"></table></div>
   <div class="cardwrap last"><table id="back"></table></div>
@@ -170,6 +197,7 @@
 
   <div class="actions">
     <button class="primary" id="newGame">New game</button>
+    <button id="gamesBtn">Games</button>
     <button id="reset">Clear scores</button>
   </div>
 
@@ -178,6 +206,19 @@
     <span id="gameId"></span>
   </div>
 
+</div>
+
+<div class="modal" id="gamesModal" hidden>
+  <div class="sheet">
+    <div class="sheethead">
+      <span>Previous games</span>
+      <button class="x" id="gamesClose">&times;</button>
+    </div>
+    <div class="gamelist" id="gameList"></div>
+    <div class="sheetfoot">
+      <button class="primary" id="backToLive" hidden>Back to round in progress</button>
+    </div>
+  </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -202,7 +243,18 @@ let HOLES = COURSES[courseKey].holes;
 const scores = { gav:{}, phil:{} };
 const hcap = { gav:0, phil:0 };
 let gameId = getGameId();
+let gameDate = todayISO();      // yyyy-mm-dd
 let sb = null, channel = null, online = false;
+
+function todayISO(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtDate(iso){
+  if(!iso)return '';
+  const[y,m,d]=iso.split('-').map(Number);
+  return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
 
 function getGameId(){
   const u = new URL(location.href);
@@ -322,7 +374,10 @@ function loadCourse(key){
 // ---------- local persistence ----------
 function lsKey(){return `sc:${gameId}`;}
 function persistLocal(){
-  try{localStorage.setItem(lsKey(),JSON.stringify({courseKey,scores,hcap}));}catch(e){}
+  try{
+    localStorage.setItem(lsKey(),JSON.stringify({courseKey,scores,hcap,gameDate}));
+    indexGame();
+  }catch(e){}
 }
 function restoreLocal(){
   try{
@@ -333,8 +388,18 @@ function restoreLocal(){
     Object.assign(scores.gav,d.scores?.gav||{});
     Object.assign(scores.phil,d.scores?.phil||{});
     if(d.hcap){hcap.gav=d.hcap.gav||0;hcap.phil=d.hcap.phil||0;}
+    if(d.gameDate)gameDate=d.gameDate;
     return true;
   }catch(e){return false;}
+}
+// a lightweight index of all games seen on this device
+function loadIndex(){try{return JSON.parse(localStorage.getItem('gamesIndex')||'{}');}catch(e){return {};}}
+function saveIndex(ix){try{localStorage.setItem('gamesIndex',JSON.stringify(ix));}catch(e){}}
+function indexGame(){
+  const ix=loadIndex();
+  const holesPlayed=new Set([...Object.keys(scores.gav),...Object.keys(scores.phil)]).size;
+  ix[gameId]={id:gameId,date:gameDate,course:courseKey,holes:holesPlayed,updated:Date.now()};
+  saveIndex(ix);
 }
 
 // ---------- Supabase sync ----------
@@ -347,34 +412,62 @@ async function initSupabase(){
   }
   try{
     sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    // load existing rows for this game
-    const {data,error}=await sb.from('scores').select('*').eq('game_id',gameId);
-    if(error)throw error;
-    if(data&&data.length){
-      data.forEach(r=>{if(r.player==='__meta'){if(COURSES[r.course])courseKey=r.course;hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;}
-        else if(scores[r.player]){scores[r.player][r.hole]=r.strokes;}});
-    }else{
-      // push current meta so the row exists
-      await pushMeta();
-    }
-    // realtime subscription
-    channel=sb.channel('game-'+gameId)
-      .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
-        const r=payload.new; if(!r)return;
-        if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;}
-        else if(scores[r.player]){if(r.strokes==null)delete scores[r.player][r.hole];else scores[r.player][r.hole]=r.strokes;}
-        build();
-      }).subscribe();
     online=true;
-    dot.className='dotstat on';
-    msg.innerHTML=`Live sync on · game <b>${gameId}</b>`;
-    document.getElementById('course').value=courseKey;
-    loadCourse(courseKey);
+    await subscribeGame(true);
   }catch(e){
     console.error(e);
+    online=false;
     dot.className='dotstat off';
     msg.innerHTML='Sync error — running local only';
   }
+}
+// (re)load and subscribe to the current gameId
+async function subscribeGame(pushIfEmpty){
+  const dot=document.getElementById('syncDot'),msg=document.getElementById('syncMsg');
+  if(!online||!sb)return;
+  if(channel){try{await sb.removeChannel(channel);}catch(e){}channel=null;}
+  const {data,error}=await sb.from('scores').select('*').eq('game_id',gameId);
+  if(error)throw error;
+  if(data&&data.length){
+    data.forEach(r=>{if(r.player==='__meta'){if(COURSES[r.course])courseKey=r.course;hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;if(r.game_date)gameDate=r.game_date;}
+      else if(scores[r.player]){scores[r.player][r.hole]=r.strokes;}});
+  }else if(pushIfEmpty){
+    await pushMeta();
+  }
+  channel=sb.channel('game-'+gameId)
+    .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
+      const r=payload.new; if(!r)return;
+      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){gameDate=r.game_date;const di=document.getElementById('gameDateInput');if(di)di.value=gameDate;}}
+      else if(scores[r.player]){if(r.strokes==null)delete scores[r.player][r.hole];else scores[r.player][r.hole]=r.strokes;}
+      build();
+    }).subscribe();
+  dot.className='dotstat on';
+  msg.innerHTML=`Live sync on · game <b>${gameId}</b>`;
+  document.getElementById('course').value=courseKey;
+  document.getElementById('hc-gav').value=hcap.gav;
+  document.getElementById('hc-phil').value=hcap.phil;
+  const di=document.getElementById('gameDateInput');if(di)di.value=gameDate;
+  loadCourse(courseKey);
+}
+// fetch all games (from Supabase meta rows if online, else local index)
+async function fetchGames(){
+  if(online&&sb){
+    try{
+      const {data,error}=await sb.from('scores').select('game_id,course,game_date,player,hole,strokes');
+      if(error)throw error;
+      const map={};
+      data.forEach(r=>{
+        const g=map[r.game_id]||(map[r.game_id]={id:r.game_id,date:null,course:'kloof',holes:new Set()});
+        if(r.player==='__meta'){if(r.game_date)g.date=r.game_date;if(COURSES[r.course])g.course=r.course;}
+        else if(r.strokes!=null){g.holes.add(r.player+':'+r.hole);}
+      });
+      return Object.values(map).map(g=>({id:g.id,date:g.date||'',course:g.course,holes:g.holes.size}))
+        .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    }catch(e){console.error(e);}
+  }
+  // local fallback
+  const ix=loadIndex();
+  return Object.values(ix).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.updated-a.updated);
 }
 async function saveHole(who,hole,strokes){
   persistLocal();
@@ -385,7 +478,7 @@ async function saveHole(who,hole,strokes){
 async function pushMeta(){
   persistLocal();
   if(!online||!sb)return;
-  try{await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil},{onConflict:'game_id,player,hole'});}
+  try{await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,game_date:gameDate},{onConflict:'game_id,player,hole'});}
   catch(e){console.error(e);}
 }
 
@@ -398,24 +491,109 @@ function buildCourseDropdown(){
 }
 document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
 document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
+document.getElementById('gameDateInput').onchange=e=>{gameDate=e.target.value||todayISO();pushMeta();indexGame();};
 document.getElementById('reset').onclick=async()=>{
   if(!confirm('Clear all scores for this game?'))return;
   scores.gav={};scores.phil={};build();
   if(online&&sb){try{await sb.from('scores').delete().eq('game_id',gameId).neq('player','__meta');}catch(e){}}
 };
-document.getElementById('newGame').onclick=()=>{
+
+// ---- switch to a different game in place (no page reload) ----
+let liveGameId=gameId;   // the round considered "in progress"
+async function switchGame(id){
+  gameId=id;
+  const u=new URL(location.href);u.searchParams.set('game',id);history.replaceState(null,'',u);
+  localStorage.setItem('lastGame',id);
+  // reset in-memory state, then load
+  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();
+  restoreLocal();
+  document.getElementById('hc-gav').value=hcap.gav;
+  document.getElementById('hc-phil').value=hcap.phil;
+  document.getElementById('gameDateInput').value=gameDate;
+  document.getElementById('course').value=courseKey;
+  loadCourse(courseKey);
+  if(online&&sb){try{await subscribeGame(false);build();}catch(e){console.error(e);}}
+  updateBanner();
+}
+function updateBanner(){
+  const b=document.getElementById('viewBanner');
+  b.hidden = (gameId===liveGameId);
+}
+
+document.getElementById('newGame').onclick=async()=>{
   const g="g"+Math.random().toString(36).slice(2,8);
-  const u=new URL(location.href);u.searchParams.set('game',g);location.href=u.toString();
+  liveGameId=g;
+  await switchGame(g);
+  if(online&&sb){await pushMeta();}
 };
-document.getElementById('today').textContent=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-document.getElementById('gameId').innerHTML=`Game <code>${gameId}</code> — share this link so Gav & Phil see the same card.`;
+
+// ---- game browser modal ----
+const modal=document.getElementById('gamesModal');
+const gameList=document.getElementById('gameList');
+function ptsFor(gid){ // quick points calc from local store if available
+  try{const d=JSON.parse(localStorage.getItem('sc:'+gid)||'{}');if(!d.scores)return null;
+    const ck=d.courseKey&&COURSES[d.courseKey]?d.courseKey:'kloof';const hs=COURSES[ck].holes;const hc=d.hcap||{gav:0,phil:0};
+    const sh=(h,si)=>{let s=0;if(h>=si)s++;if(h>=si+18)s++;return s;};
+    const tot=w=>{let s=0;hs.forEach(h=>{const g=d.scores[w]?.[h.n];if(g!=null){const net=g-sh(hc[w]||0,h.si);s+=Math.max(0,2-(net-h.par));}});return s;};
+    return {gav:tot('gav'),phil:tot('phil')};
+  }catch(e){return null;}
+}
+async function openGames(){
+  gameList.innerHTML='<div class="gempty">Loading…</div>';
+  modal.hidden=false;
+  document.getElementById('backToLive').hidden=(gameId===liveGameId);
+  const games=await fetchGames();
+  if(!games.length){gameList.innerHTML='<div class="gempty">No previous games yet.</div>';return;}
+  gameList.innerHTML=games.map(g=>{
+    const cn=COURSES[g.course]?COURSES[g.course].name:g.course;
+    const p=ptsFor(g.id);
+    const pts=p?`Gav <b>${p.gav}</b> · Phil <b>${p.phil}</b>`:`${g.holes||0} holes`;
+    const cur=g.id===gameId?' current':'';
+    const tag=g.id===liveGameId?'<span class="gtag">Live</span>':'';
+    return `<div class="grow${cur}" data-id="${g.id}">
+      <div class="gmain">
+        <div class="gdate">${g.date?fmtDate(g.date):'(no date)'}${tag}</div>
+        <div class="gcourse">${cn}</div>
+      </div>
+      <div class="gpts">${pts}</div>
+      <button class="gdel" data-del="${g.id}" title="Delete">🗑</button>
+    </div>`;
+  }).join('');
+  gameList.querySelectorAll('.grow').forEach(row=>{
+    row.onclick=async e=>{
+      if(e.target.closest('.gdel'))return;
+      await switchGame(row.dataset.id);
+      modal.hidden=true;
+    };
+  });
+  gameList.querySelectorAll('.gdel').forEach(btn=>{
+    btn.onclick=async e=>{
+      e.stopPropagation();
+      const id=btn.dataset.del;
+      if(!confirm('Delete this game permanently?'))return;
+      const ix=loadIndex();delete ix[id];saveIndex(ix);
+      try{localStorage.removeItem('sc:'+id);}catch(e){}
+      if(online&&sb){try{await sb.from('scores').delete().eq('game_id',id);}catch(e){}}
+      openGames();
+    };
+  });
+}
+document.getElementById('gamesBtn').onclick=openGames;
+document.getElementById('gamesClose').onclick=()=>modal.hidden=true;
+modal.onclick=e=>{if(e.target===modal)modal.hidden=true;};
+document.getElementById('backToLive').onclick=async()=>{await switchGame(liveGameId);modal.hidden=true;};
+document.getElementById('returnLive').onclick=async()=>{await switchGame(liveGameId);};
 
 // ---------- boot ----------
 restoreLocal();
+liveGameId=gameId;
 document.getElementById('hc-gav').value=hcap.gav;
 document.getElementById('hc-phil').value=hcap.phil;
+document.getElementById('gameDateInput').value=gameDate;
+document.getElementById('gameId').innerHTML=`Game <code>${gameId}</code> — share this link so Gav &amp; Phil see the same card.`;
 buildCourseDropdown();
 loadCourse(courseKey);
+indexGame();
 initSupabase();
 </script>
 </body>

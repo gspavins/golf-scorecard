@@ -7,11 +7,15 @@ create table if not exists public.scores (
   hole       int     not null,          -- 1..18, or 0 for the meta row
   strokes    int,                       -- gross strokes on the hole
   course     text,                      -- only used on the __meta row
+  game_date  date,                      -- round date (on the __meta row)
   hcap_gav   int,
   hcap_phil  int,
   updated_at timestamptz default now(),
   primary key (game_id, player, hole)
 );
+
+-- If you already created the table before, add the date column:
+alter table public.scores add column if not exists game_date date;
 
 -- Simple open policies for a private 2-player app (anon key can read/write).
 -- Tighten later with auth if you want it locked down.

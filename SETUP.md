@@ -20,11 +20,13 @@ create table if not exists public.scores (
   hole       int     not null,          -- 1..18, or 0 for the meta row
   strokes    int,                       -- gross strokes on the hole
   course     text,                       -- only used on the __meta row
+  game_date  date,                       -- round date (on the __meta row)
   hcap_gav   int,
   hcap_phil  int,
   updated_at timestamptz default now(),
   primary key (game_id, player, hole)
 );
+alter table public.scores add column if not exists game_date date;
 
 -- allow the anon key to read/write (simple setup for a private 2-player app)
 alter table public.scores enable row level security;
@@ -73,7 +75,11 @@ The status strip under the course picker turns **green** when live sync is on.
 - Tap **New game** to start a fresh card with a new id.
 - Pick the course from the dropdown; the whole card (par, stroke index, tee
   distances) swaps to match. The choice syncs to both phones.
+- Set the **date** with the date picker (defaults to today).
 - Set each handicap top-right — stroke dots and Stableford points update live.
+- Tap **Games** to see previous rounds. Pick one to open and edit its scores,
+  or tap **Back to round in progress** / **Return to live round** to come back
+  to the current game. A gold banner shows when you're viewing a past round.
 
 ## Notes on course data
 
