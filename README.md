@@ -33,6 +33,7 @@ and host on GitHub Pages.
 | File | Purpose |
 |------|---------|
 | `index.html` | The whole app (HTML + CSS + JS in one file) |
+| `sw.js` | Service worker — offline cache + auto-update |
 | `golf-icon.png` | App / favicon / home-screen icon |
 | `supabase.sql` | Table + policies to paste into the Supabase SQL editor |
 | `SETUP.md` | Step-by-step Supabase + GitHub Pages setup |

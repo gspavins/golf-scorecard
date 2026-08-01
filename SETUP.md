@@ -88,3 +88,28 @@ and converted to metres. Tee used per course: Kloof = White, Durban CC = Yellow,
 Royal Johannesburg (East) = Blue, Mowbray = Blue. Only courses with a full,
 verifiable hole-by-hole scorecard are included. To add another, extend the
 `COURSES` object in the script with the same `{n,d,par,si}` shape.
+
+---
+
+## Versioning & auto-update
+
+The app shows its version at the bottom (e.g. `v1.0.0`) and updates itself
+automatically:
+
+- A service worker (`sw.js`) caches the app for offline use and checks for a
+  newer version every time it loads (and once a minute while open).
+- When you deploy a change, players get it on their next open — no manual
+  refresh or cache-clearing needed. The footer briefly shows "updating…" and
+  the page reloads once with the new code.
+
+**When you make changes, bump the version in _two_ places so clients update:**
+
+1. In `index.html`: `const APP_VERSION = "1.0.0";`
+2. In `sw.js`: `const CACHE_VERSION = "1.0.0";`
+
+Use the same number in both (e.g. `1.0.1`, `1.1.0`). That new value invalidates
+the old cache and forces every device to pull the fresh files.
+
+> Note: the service worker only runs over **https** (GitHub Pages is https) or
+> on `localhost`. Opening the file directly from disk won't register it, but the
+> app still works — it just won't auto-update until it's hosted.
