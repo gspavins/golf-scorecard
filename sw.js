@@ -1,13 +1,16 @@
 /* Service worker — auto-updating cache for SA Golf Scorecard
    Bump CACHE_VERSION (or APP_VERSION in index.html) whenever you deploy
    changes so clients pick them up automatically. */
-const CACHE_VERSION = "1.4.1";
+const CACHE_VERSION = "2.0.0";
 const CACHE_NAME = "golf-scorecard-" + CACHE_VERSION;
 
 // Files to pre-cache for offline use
 const ASSETS = [
   "./",
   "./index.html",
+  "./scorecard.html",
+  "./spend.html",
+  "./config.js",
   "./golf-icon.png"
 ];
 
@@ -48,6 +51,17 @@ self.addEventListener("fetch", event => {
         caches.open(CACHE_NAME).then(c => c.put(req, copy)).catch(() => {});
         return res;
       })
-      .catch(() => caches.match(req).then(hit => hit || caches.match("./index.html")))
+      .catch(() =>
+        caches.match(req).then(hit => {
+          if (hit) return hit;
+          // for a navigation to an uncached page, try the page by pathname,
+          // then fall back to the landing page as a last resort
+          if (req.mode === "navigate") {
+            const path = new URL(req.url).pathname.split("/").pop() || "index.html";
+            return caches.match("./" + path).then(p => p || caches.match("./index.html"));
+          }
+          return caches.match("./index.html");
+        })
+      )
   );
 });

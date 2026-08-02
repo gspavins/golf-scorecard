@@ -150,3 +150,28 @@ Rules the app expects:
 The app reads the catalogue from the database on load (and falls back to the
 six built-in courses when offline or before `courses.sql` has been run). New
 courses appear next time the app is opened.
+
+---
+
+## v2 — landing page, progress chart, finalise, spend tracker
+
+The app now opens on a **landing page** (`index.html`) with:
+- **New scorecard / Resume round / Past rounds** → the scorecard (`scorecard.html`)
+- **Spend tracker** → `spend.html`
+
+New in the scorecard:
+- **Progress tab** — swipe right (or tap Progress) for a cumulative chart; toggle
+  Strokes / To Par / Points.
+- **Mark final** — flags a finished round (still editable). Final games show a
+  "Final" tag in the games list and no longer count as the "live" round.
+
+**Extra database setup for v2** (run once each in the SQL Editor):
+1. `spend.sql` — creates the spend tracker table.
+2. The `final` column was added to `supabase.sql`; if your `scores` table already
+   exists, just run this line:
+   ```sql
+   alter table public.scores add column if not exists final boolean default false;
+   ```
+
+Config note: Supabase keys + version now live in **`config.js`**, shared by all
+three pages — set them once there (the old inline block is gone).

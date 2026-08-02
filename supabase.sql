@@ -33,3 +33,6 @@ create policy "anon delete" on public.scores for delete using (true);
 
 -- Enable realtime so both phones update live
 alter publication supabase_realtime add table public.scores;
+
+-- Added for "Mark final" game status:
+alter table public.scores add column if not exists final boolean default false;

@@ -32,10 +32,14 @@ and host on GitHub Pages.
 
 | File | Purpose |
 |------|---------|
-| `index.html` | The whole app (HTML + CSS + JS in one file) |
+| `index.html` | Landing page (menu) |
+| `scorecard.html` | The scorecard app + progress chart |
+| `spend.html` | Spend tracker |
+| `config.js` | Shared Supabase keys + version |
 | `sw.js` | Service worker — offline cache + auto-update |
 | `golf-icon.png` | App / favicon / home-screen icon |
-| `supabase.sql` | Scores table + policies for live scoring |
+| `supabase.sql` | Scores table + policies (+ `final` column) |
+| `spend.sql` | Spend tracker table |
 | `courses.sql` | Course catalogue tables + the six built-in courses |
 | `SETUP.md` | Step-by-step Supabase + GitHub Pages setup |
 

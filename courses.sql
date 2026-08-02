@@ -219,3 +219,27 @@ insert into public.course_holes (course_id, hole, distance, par, stroke_index) v
   ('victoria', 17, 144, 3, 17),
   ('victoria', 18, 460, 5, 11)
   on conflict (course_id, hole) do update set distance=excluded.distance, par=excluded.par, stroke_index=excluded.stroke_index;
+
+insert into public.courses (id, name, location, tee, par) values
+  ('cotswold', 'Cotswold Downs', 'Hillcrest, KZN', 'Black', 72)
+  on conflict (id) do update set name=excluded.name, location=excluded.location, tee=excluded.tee, par=excluded.par;
+insert into public.course_holes (course_id, hole, distance, par, stroke_index) values
+  ('cotswold', 1, 496, 5, 6),
+  ('cotswold', 2, 382, 4, 8),
+  ('cotswold', 3, 349, 4, 12),
+  ('cotswold', 4, 366, 4, 4),
+  ('cotswold', 5, 157, 3, 18),
+  ('cotswold', 6, 289, 4, 14),
+  ('cotswold', 7, 154, 3, 16),
+  ('cotswold', 8, 371, 4, 2),
+  ('cotswold', 9, 472, 5, 10),
+  ('cotswold', 10, 310, 4, 7),
+  ('cotswold', 11, 312, 4, 13),
+  ('cotswold', 12, 383, 4, 3),
+  ('cotswold', 13, 480, 5, 9),
+  ('cotswold', 14, 182, 3, 17),
+  ('cotswold', 15, 359, 4, 11),
+  ('cotswold', 16, 151, 3, 15),
+  ('cotswold', 17, 376, 4, 1),
+  ('cotswold', 18, 507, 5, 5)
+  on conflict (course_id, hole) do update set distance=excluded.distance, par=excluded.par, stroke_index=excluded.stroke_index;
