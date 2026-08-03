@@ -604,21 +604,25 @@ async function subscribeGame(pushIfEmpty){
   setDate(gameDate);
   loadCourse(courseKey);
 }
+function escapeHtmlLite(s){return String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 // fetch all games (from Supabase meta rows if online, else local index)
+let lastFetchInfo='';
 async function fetchGames(){
   const merged={};
+  lastFetchInfo = sb ? 'querying…' : 'no DB client';
   // 1) pull from the database whenever we have a client (not gated on the online flag)
   if(sb){
     try{
       const {data,error}=await sb.from('scores').select('game_id,course,game_date,player,hole,strokes,updated_at,final').limit(5000);
       if(error)throw error;
+      lastFetchInfo=`DB returned ${data?data.length:0} rows`;
       data.forEach(r=>{
         const g=merged[r.game_id]||(merged[r.game_id]={id:r.game_id,date:null,course:'kloof',holes:new Set(),gav:0,phil:0,updated:0,final:false});
         if(r.player==='__meta'){if(r.game_date)g.date=r.game_date;if(COURSES[r.course])g.course=r.course;g.final=!!r.final;}
         else if(r.strokes!=null){g.holes.add(r.player+':'+r.hole);if(r.player==='gav')g.gav++;else if(r.player==='phil')g.phil++;}
         const t=r.updated_at?Date.parse(r.updated_at):0; if(t>g.updated)g.updated=t;
       });
-    }catch(e){console.error('fetchGames DB error',e);}
+    }catch(e){console.error('fetchGames DB error',e);lastFetchInfo='DB read ERROR: '+(e&&e.message?e.message:e);}
   }
   // 2) merge in local games (so offline / not-yet-synced games also show)
   const ixLocal=loadIndex();
@@ -743,7 +747,7 @@ async function openGames(){
   modal.hidden=false;
   document.getElementById('backToLive').hidden=(gameId===liveGameId);
   const games=await fetchGames();
-  if(!games.length){gameList.innerHTML='<div class="gempty">No previous games yet.</div>';return;}
+  if(!games.length){gameList.innerHTML='<div class="gempty">No previous games yet.<br><span style="font-size:10px;color:#9a968c">'+escapeHtmlLite(lastFetchInfo)+'</span></div>';return;}
   gameList.innerHTML=games.map(g=>{
     const cn=COURSES[g.course]?COURSES[g.course].name:g.course;
     const holesPlayed=Math.max(g.gav||0,g.phil||0,0);
