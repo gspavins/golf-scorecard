@@ -6,7 +6,6 @@
 <title>Spend Tracker — Gav &amp; Phil</title>
 <link rel="icon" type="image/png" href="golf-icon.png">
 <link rel="apple-touch-icon" href="golf-icon.png">
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f5c34">
 <style>
   :root{--ink:#1e1e1e;--card:#fff;--line:#3a3a3a;--hair:#b9b6ab;--green:#0f5c34;--green-dk:#0a3f24;--gold:#b8912f;--dim:#6d6a60;--clay:#b45b3e}
@@ -156,30 +155,29 @@ const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMo
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function totals(){
-  let gav=0,phil=0;              // raw spend only
-  let settleGavToPhil=0;         // net rand Gav has paid Phil (minus Phil->Gav)
+  let gav=0,phil=0;            // raw spend
+  let effGav=0,effPhil=0;      // spend + settlements folded in (payer +, recipient -)
   entries.forEach(e=>{
     if(e.type==='settle'){
-      if(e.who==='gav')settleGavToPhil+=e.amount;   // Gav paid Phil
-      else settleGavToPhil-=e.amount;               // Phil paid Gav
+      if(e.who==='gav'){effGav+=e.amount;effPhil-=e.amount;}
+      else {effPhil+=e.amount;effGav-=e.amount;}
     }else{
-      if(e.who==='gav')gav+=e.amount; else phil+=e.amount;
+      if(e.who==='gav'){gav+=e.amount;effGav+=e.amount;}
+      else {phil+=e.amount;effPhil+=e.amount;}
     }
   });
-  // effective totals shown to the user = raw spend (settlements are transfers, shown as their own lines)
-  return {gav,phil,settleGavToPhil};
+  return {gav,phil,effGav,effPhil};
 }
-// balance = difference between the two spend totals, adjusted by settlements already paid.
-// >0 Gav owes Phil ; <0 Phil owes Gav
+// net position from effective totals: >0 Gav owes Phil ; <0 Phil owes Gav
 function netOwed(){
   const t=totals();
-  return (t.phil - t.gav) - t.settleGavToPhil;
+  return (t.effPhil-t.effGav)/2;
 }
 
 function render(){
   const t=totals();
-  document.getElementById('gavTot').textContent=R(t.gav);
-  document.getElementById('philTot').textContent=R(t.phil);
+  document.getElementById('gavTot').textContent=R(t.effGav);
+  document.getElementById('philTot').textContent=R(t.effPhil);
   const bal=netOwed();
   const who=document.getElementById('balWho'), amt=document.getElementById('balAmt');
   if(Math.abs(bal)<0.005){who.textContent='All settled';amt.textContent='R0';amt.classList.add('settled');}
