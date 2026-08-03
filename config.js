@@ -5,4 +5,4 @@
    ============================================================ */
 const SUPABASE_URL = "https://ydejaktiyrcwsvwdgxpb.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_DIpdPuQTWun5RqKD0DleSA_oRErvGb9";
-const APP_VERSION = "2.6.1";
+const APP_VERSION = "2.7.0";

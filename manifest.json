@@ -1,0 +1,22 @@
+{
+  "name": "Gav & Phil Golf",
+  "short_name": "Golf",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0f5c34",
+  "theme_color": "#0f5c34",
+  "icons": [
+    {
+      "src": "golf-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "golf-icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
