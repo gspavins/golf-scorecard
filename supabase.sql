@@ -14,8 +14,15 @@ create table if not exists public.scores (
   primary key (game_id, player, hole)
 );
 
--- If you already created the table before, add the date column:
-alter table public.scores add column if not exists game_date date;
+-- If the table was created by an earlier version, make sure every column exists.
+-- (Safe to run repeatedly — only adds what's missing.)
+alter table public.scores add column if not exists strokes    int;
+alter table public.scores add column if not exists course     text;
+alter table public.scores add column if not exists game_date  date;
+alter table public.scores add column if not exists hcap_gav   int;
+alter table public.scores add column if not exists hcap_phil  int;
+alter table public.scores add column if not exists updated_at timestamptz default now();
+alter table public.scores add column if not exists final      boolean default false;
 
 -- Simple open policies for a private 2-player app (anon key can read/write).
 -- Tighten later with auth if you want it locked down.
@@ -37,6 +44,3 @@ begin
   alter publication supabase_realtime add table public.scores;
 exception when duplicate_object then null;
 end $$;
-
--- Added for "Mark final" game status:
-alter table public.scores add column if not exists final boolean default false;
