@@ -49,17 +49,17 @@
       </a>
       <a class="item" href="scorecard.html?new=1">
         <span class="ic">&#9971;</span>
-        <span class="tx"><span class="tt">New scorecard</span><span class="ds">Start a fresh round</span></span>
+        <span class="tx"><span class="tt">New scorecard</span></span>
         <span class="ar">&rsaquo;</span>
       </a>
       <a class="item" href="scorecard.html?games=1">
         <span class="ic" style="background:#6d6a60">&#8803;</span>
-        <span class="tx"><span class="tt">Past rounds</span><span class="ds">View or edit previous games</span></span>
+        <span class="tx"><span class="tt">Past rounds</span></span>
         <span class="ar">&rsaquo;</span>
       </a>
       <a class="item" href="spend.html">
         <span class="ic gold">R</span>
-        <span class="tx"><span class="tt">Spend tracker</span><span class="ds">Who owes who, and how much</span></span>
+        <span class="tx"><span class="tt">Spend tracker</span></span>
         <span class="ar">&rsaquo;</span>
       </a>
     </div>
@@ -75,12 +75,12 @@
       if(raw){
         const d=JSON.parse(raw);
         const played=new Set([...Object.keys(d.scores?.gav||{}),...Object.keys(d.scores?.phil||{})]).size;
-        if(played>0){
+        if(played>0 && !d.gameFinal){
           const item=document.getElementById('resumeItem');
           item.hidden=false;
           item.href='scorecard.html?game='+encodeURIComponent(last);
           const cn={kloof:'Kloof',durban:'Durban CC',rjhb:"Royal Jo'burg",mowbray:'Mowbray',zimbali:'Zimbali',selborne:'Selborne',victoria:'Victoria CC',cotswold:'Cotswold Downs'}[d.courseKey]||'Round';
-          document.getElementById('resumeDesc').textContent=cn+' · '+played+'/18 holes'+(d.gameFinal?' · final':'');
+          document.getElementById('resumeDesc').textContent=cn+' · '+played+'/18 holes';
         }
       }
     }
