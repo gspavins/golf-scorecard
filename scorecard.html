@@ -515,7 +515,7 @@ async function initSupabase(){
     if(test.error) throw test.error;
     online=true;
     await loadCoursesFromDB();
-    await subscribeGame(true);   // load this game's rows (pushes meta only if truly new)
+    await subscribeGame(false);   // never auto-create; only write on first real edit
     build();                      // render whatever we loaded
   }catch(e){
     console.error('Supabase connect failed:',e);
@@ -564,10 +564,11 @@ async function subscribeGame(pushIfEmpty){
     let hasMeta=false;
     data.forEach(r=>{if(r.player==='__meta'){hasMeta=true;if(COURSES[r.course])courseKey=r.course;if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;if(r.game_date)gameDate=r.game_date;gameFinal=!!r.final;}
       else if(scores[r.player]){scores[r.player][r.hole]=r.strokes;}});
+    metaWritten=hasMeta;
     // self-heal: game has scores but no meta row (course + handicaps) — write it from what we have
-    if(!hasMeta) await pushMeta();
+    if(!hasMeta){await pushMeta();metaWritten=true;}
   }else if(pushIfEmpty){
-    await pushMeta();
+    await pushMeta();metaWritten=true;
   }
   channel=sb.channel('game-'+gameId)
     .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
@@ -628,13 +629,15 @@ async function fetchGames(){
 async function saveHole(who,hole,strokes){
   persistLocal();
   if(!online||!sb)return;
-  try{await sb.from('scores').upsert({game_id:gameId,player:who,hole,strokes,updated_at:new Date().toISOString()},{onConflict:'game_id,player,hole'});}
-  catch(e){console.error(e);}
+  try{
+    await sb.from('scores').upsert({game_id:gameId,player:who,hole,strokes,updated_at:new Date().toISOString()},{onConflict:'game_id,player,hole'});
+    if(!metaWritten){metaWritten=true;await pushMeta();}   // make sure course+handicaps land too
+  }catch(e){console.error(e);}
 }
 async function pushMeta(){
   persistLocal();
   if(!online||!sb)return;
-  try{await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()},{onConflict:'game_id,player,hole'});}
+  try{await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()},{onConflict:'game_id,player,hole'});metaWritten=true;}
   catch(e){console.error(e);}
 }
 // upload every locally-held score for this game (used right after connecting)
@@ -670,13 +673,14 @@ document.getElementById('reset').onclick=async()=>{
 // ---- switch to a different game in place (no page reload) ----
 let liveGameId=gameId;   // the round considered "in progress"
 let reviewing=false;     // true when viewing a past game (not the live round)
+let metaWritten=false;   // whether we've written the meta row for the current game
 async function switchGame(id, review){
   gameId=id;
   reviewing=!!review;
   const u=new URL(location.href);u.searchParams.set('game',id);history.replaceState(null,'',u);
   if(!review) localStorage.setItem('lastGame',id);   // only a live game becomes the resumable one
   // reset in-memory state, then load
-  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();gameFinal=false;
+  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();gameFinal=false;metaWritten=false;
   restoreLocal();
   document.getElementById('hc-gav').value=hcap.gav;
   document.getElementById('hc-phil').value=hcap.phil;
