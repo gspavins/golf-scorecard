@@ -33,24 +33,43 @@
   .totals .nm{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700}
   .totals .v{font-family:Georgia,serif;font-size:20px;font-weight:700;margin-top:2px}
 
-  .addbar{display:grid;grid-template-columns:88px 1fr 96px 44px;gap:6px;background:var(--card);border:2px solid var(--line);border-top:none;padding:8px}
-  .addbar select,.addbar input{font:inherit;font-size:13px;border:1px solid var(--hair);border-radius:6px;padding:7px 8px;background:#fff;color:var(--ink);min-width:0;width:100%}
+  .addbar{display:grid;grid-template-columns:80px 116px 1fr 92px 40px;gap:6px;background:var(--card);border:2px solid var(--line);border-top:none;padding:8px}
+  .addbar select,.addbar input{font:inherit;font-size:13px;border:1px solid var(--hair);border-radius:6px;padding:7px 6px;background:#fff;color:var(--ink);min-width:0;width:100%}
   .addbar .add{background:var(--green);color:#fff;border:1px solid var(--green-dk);border-radius:7px;font-size:20px;font-weight:700;cursor:pointer;padding:0}
   .addbar .add:active{transform:translateY(1px)}
+  .barrow2{display:flex;gap:6px;background:var(--card);border:2px solid var(--line);border-top:none;padding:0 8px 8px}
+  .barrow2 button{flex:1;font:inherit;font-weight:700;font-size:12px;padding:8px;border-radius:7px;cursor:pointer;border:1px solid var(--hair);background:#f6f4ec;color:var(--green-dk)}
+  .barrow2 button.settle{background:var(--gold);color:#3a2c00;border-color:#9a7723}
 
   .list{background:var(--card);border:2px solid var(--line);border-top:none;border-radius:0 0 9px 9px;overflow:hidden}
-  .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--hair)}
+  .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--hair);cursor:pointer}
   .row:last-child{border-bottom:none}
+  .row:hover{background:#f8f6ef}
+  .row.settlerow{background:#faf6ea}
   .row .pill{flex:0 0 auto;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;border-radius:5px;padding:3px 7px}
   .row .pill.gav{background:var(--green)} .row .pill.phil{background:var(--gold)}
+  .row .pill.settle{background:#3a2c00}
   .row .desc{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .row .date{font-size:10px;color:var(--dim)}
   .row .amt{font-family:Georgia,serif;font-weight:700;font-size:15px}
+  .row .amt.settle{color:var(--gold)}
   .row .del{background:none;border:none;color:var(--clay);font-size:15px;cursor:pointer;padding:2px 4px;flex:0 0 auto}
   .empty{text-align:center;color:var(--dim);padding:26px;font-size:13px}
-
   .foot{text-align:center;font-size:10px;color:var(--dim);margin-top:10px;line-height:1.6}
-  @media(max-width:480px){.addbar{grid-template-columns:76px 1fr 80px 42px}}
+
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(20,25,22,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .modal[hidden]{display:none}
+  .sheet{background:var(--card);width:100%;max-width:420px;border-radius:14px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .sheethead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--hair);font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--green-dk)}
+  .sheethead .x{background:none;border:none;font-size:24px;color:var(--dim);cursor:pointer}
+  .sheetbody{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .sheetbody label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+  .sheetbody select,.sheetbody input{font:inherit;font-size:15px;border:1px solid var(--hair);border-radius:8px;padding:9px 10px;background:#fff;color:var(--ink);width:100%}
+  .sheetfoot{display:flex;gap:8px;padding:0 16px 16px}
+  .sheetfoot button{flex:1;font:inherit;font-weight:700;font-size:14px;padding:11px;border-radius:8px;cursor:pointer;border:1px solid var(--green-dk);background:var(--green);color:#fff}
+  .sheetfoot button.ghost{background:transparent;color:var(--green-dk)}
+  @media(max-width:480px){.addbar{grid-template-columns:64px 104px 1fr 74px 38px}}
 </style>
 </head>
 <body>
@@ -74,76 +93,212 @@
 
   <div class="addbar">
     <select id="who"><option value="gav">Gav</option><option value="phil">Phil</option></select>
-    <input id="desc" type="text" placeholder="What for? (e.g. green fees)" maxlength="60">
+    <input id="date" type="date">
+    <input id="desc" type="text" placeholder="What for?" maxlength="60">
     <input id="amt" type="number" inputmode="decimal" placeholder="Amount" min="0" step="0.01">
     <button class="add" id="addBtn" title="Add">+</button>
+  </div>
+  <div class="barrow2">
+    <button class="settle" id="settleBtn">Settle up</button>
   </div>
 
   <div class="list" id="list"><div class="empty">No entries yet. Add what each of you spent.</div></div>
 
-  <div class="foot">Balance = difference between totals. Entries sync live when Supabase is connected.<br>v<span id="ver"></span></div>
+  <div class="foot">Tap a line to edit. Balance = half the difference between totals; settlements clear it.<br>v<span id="ver"></span></div>
+</div>
+
+<!-- edit modal -->
+<div class="modal" id="editModal" hidden>
+  <div class="sheet">
+    <div class="sheethead"><span id="editTitle">Edit entry</span><button class="x" id="editClose">&times;</button></div>
+    <div class="sheetbody">
+      <div><label>Who</label>
+        <select id="e-who"><option value="gav">Gav</option><option value="phil">Phil</option></select>
+      </div>
+      <div><label>Date</label><input id="e-date" type="date"></div>
+      <div id="e-desc-wrap"><label>Description</label><input id="e-desc" type="text" maxlength="60"></div>
+      <div><label id="e-amt-label">Amount</label><input id="e-amt" type="number" inputmode="decimal" min="0" step="0.01"></div>
+    </div>
+    <div class="sheetfoot">
+      <button class="ghost" id="editDelete">Delete</button>
+      <button id="editSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- settle modal -->
+<div class="modal" id="settleModal" hidden>
+  <div class="sheet">
+    <div class="sheethead"><span>Settle up</span><button class="x" id="settleClose">&times;</button></div>
+    <div class="sheetbody">
+      <div id="settleHint" style="font-size:13px;color:var(--dim)"></div>
+      <div><label>Who is paying</label>
+        <select id="s-who"><option value="gav">Gav</option><option value="phil">Phil</option></select>
+      </div>
+      <div><label>Date</label><input id="s-date" type="date"></div>
+      <div><label>Amount paid</label><input id="s-amt" type="number" inputmode="decimal" min="0" step="0.01"></div>
+    </div>
+    <div class="sheetfoot">
+      <button class="ghost" id="settleCancel">Cancel</button>
+      <button id="settleSave">Record payment</button>
+    </div>
+  </div>
 </div>
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const entries=[];            // {id, who, desc, amount, ts}
+const entries=[];   // {id, who, desc, amount, ts, type:'spend'|'settle'}
 let sb=null, online=false, channel=null;
 const R=n=>'R'+(Math.round(n*100)/100).toLocaleString('en-ZA',{minimumFractionDigits:0,maximumFractionDigits:2});
+const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function totals(){
+  let gav=0,phil=0,settleGav=0,settlePhil=0;
+  entries.forEach(e=>{
+    if(e.type==='settle'){ if(e.who==='gav')settleGav+=e.amount; else settlePhil+=e.amount; }
+    else { if(e.who==='gav')gav+=e.amount; else phil+=e.amount; }
+  });
+  return {gav,phil,settleGav,settlePhil};
+}
+// net position: positive means Gav is owed (Phil should pay Gav)
+function netOwed(){
+  const t=totals();
+  // to equalise spend, lower spender owes half the gap; settlements adjust it
+  let gavOwesPhil=(t.phil-t.gav)/2;          // if positive, Gav owes Phil
+  gavOwesPhil-=t.settleGav;                    // Gav already paid reduces what Gav owes
+  gavOwesPhil+=t.settlePhil;                    // Phil paying increases what Gav is owed
+  return gavOwesPhil;  // >0 Gav owes Phil ; <0 Phil owes Gav
+}
 
 function render(){
-  const list=document.getElementById('list');
-  let gav=0,phil=0;
-  entries.forEach(e=>{ if(e.who==='gav')gav+=e.amount; else phil+=e.amount; });
-  document.getElementById('gavTot').textContent=R(gav);
-  document.getElementById('philTot').textContent=R(phil);
-  // balance = difference; the one who spent LESS owes the difference / 2? 
-  // Each logs own spend; to equalise, the lower spender owes half the gap.
-  const diff=Math.abs(gav-phil)/2;
+  const t=totals();
+  document.getElementById('gavTot').textContent=R(t.gav);
+  document.getElementById('philTot').textContent=R(t.phil);
+  const bal=netOwed();
   const who=document.getElementById('balWho'), amt=document.getElementById('balAmt');
-  if(diff<0.005){who.textContent='All settled';amt.textContent='R0';amt.classList.add('settled');}
+  if(Math.abs(bal)<0.005){who.textContent='All settled';amt.textContent='R0';amt.classList.add('settled');}
   else{
     amt.classList.remove('settled');
-    const ower = gav<phil ? 'Gav' : 'Phil';
-    const owed = gav<phil ? 'Phil' : 'Gav';
-    who.textContent = ower+' owes '+owed;
-    amt.textContent = R(diff);
+    if(bal>0){who.textContent='Gav owes Phil';amt.textContent=R(bal);}
+    else{who.textContent='Phil owes Gav';amt.textContent=R(-bal);}
   }
+  const list=document.getElementById('list');
   if(!entries.length){list.innerHTML='<div class="empty">No entries yet. Add what each of you spent.</div>';return;}
   list.innerHTML=entries.slice().sort((a,b)=>b.ts-a.ts).map(e=>{
-    const d=new Date(e.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+    const d=new Date(e.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
     const nm=e.who==='gav'?'Gav':'Phil';
-    return `<div class="row">
+    if(e.type==='settle'){
+      const other=e.who==='gav'?'Phil':'Gav';
+      return `<div class="row settlerow" data-id="${e.id}">
+        <span class="pill settle">Settle</span>
+        <span class="desc">${nm} paid ${other}<div class="date">${d}</div></span>
+        <span class="amt settle">${R(e.amount)}</span>
+        <button class="del" data-id="${e.id}" title="Delete">&#128465;</button></div>`;
+    }
+    return `<div class="row" data-id="${e.id}">
       <span class="pill ${e.who}">${nm}</span>
       <span class="desc">${escapeHtml(e.desc||'—')}<div class="date">${d}</div></span>
       <span class="amt">${R(e.amount)}</span>
-      <button class="del" data-id="${e.id}" title="Delete">&#128465;</button>
-    </div>`;
+      <button class="del" data-id="${e.id}" title="Delete">&#128465;</button></div>`;
   }).join('');
-  list.querySelectorAll('.del').forEach(b=>b.onclick=()=>removeEntry(b.dataset.id));
+  list.querySelectorAll('.row').forEach(row=>{
+    row.onclick=ev=>{ if(ev.target.closest('.del'))return; openEdit(row.dataset.id); };
+  });
+  list.querySelectorAll('.del').forEach(b=>b.onclick=ev=>{ev.stopPropagation();removeEntry(b.dataset.id);});
 }
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function persist(){try{localStorage.setItem('spend',JSON.stringify(entries));}catch(e){}}
-function restore(){try{const r=localStorage.getItem('spend');if(r){JSON.parse(r).forEach(e=>entries.push(e));}}catch(e){}}
+function restore(){try{const r=localStorage.getItem('spend');if(r){JSON.parse(r).forEach(e=>{if(!e.type)e.type='spend';entries.push(e);});}}catch(e){}}
+
+async function dbInsert(e){ if(online&&sb){try{await sb.from('spend').insert({id:e.id,who:e.who,description:e.desc,amount:e.amount,kind:e.type,created_at:new Date(e.ts).toISOString()});}catch(err){console.error(err);}} }
+async function dbUpdate(e){ if(online&&sb){try{await sb.from('spend').update({who:e.who,description:e.desc,amount:e.amount,kind:e.type,created_at:new Date(e.ts).toISOString()}).eq('id',e.id);}catch(err){console.error(err);}} }
+async function dbDelete(id){ if(online&&sb){try{await sb.from('spend').delete().eq('id',id);}catch(err){console.error(err);}} }
+
+function newId(){return 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function tsFromDate(iso){ // keep time-of-day so ordering is stable within a day
+  const [y,m,d]=iso.split('-').map(Number); const now=new Date();
+  return new Date(y,m-1,d,now.getHours(),now.getMinutes(),now.getSeconds()).getTime();
+}
 
 async function addEntry(){
   const who=document.getElementById('who').value;
   const desc=document.getElementById('desc').value.trim();
   const amount=parseFloat(document.getElementById('amt').value);
+  const iso=document.getElementById('date').value||todayISO();
   if(!(amount>0)){document.getElementById('amt').focus();return;}
-  const e={id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),who,desc,amount:Math.round(amount*100)/100,ts:Date.now()};
-  entries.push(e); persist(); render();
+  const e={id:newId(),who,desc,amount:Math.round(amount*100)/100,ts:tsFromDate(iso),type:'spend'};
+  entries.push(e);persist();render();
   document.getElementById('desc').value='';document.getElementById('amt').value='';document.getElementById('desc').focus();
-  if(online&&sb){try{await sb.from('spend').insert({id:e.id,who:e.who,description:e.desc,amount:e.amount,created_at:new Date(e.ts).toISOString()});}catch(err){console.error(err);}}
+  dbInsert(e);
 }
 async function removeEntry(id){
   const i=entries.findIndex(e=>e.id===id); if(i<0)return;
   if(!confirm('Delete this entry?'))return;
-  entries.splice(i,1); persist(); render();
-  if(online&&sb){try{await sb.from('spend').delete().eq('id',id);}catch(e){}}
+  entries.splice(i,1);persist();render();dbDelete(id);
 }
 
+// ---- edit modal ----
+let editId=null;
+const editModal=document.getElementById('editModal');
+function openEdit(id){
+  const e=entries.find(x=>x.id===id); if(!e)return;
+  editId=id;
+  const isSettle=e.type==='settle';
+  document.getElementById('editTitle').textContent=isSettle?'Edit payment':'Edit entry';
+  document.getElementById('e-who').value=e.who;
+  document.getElementById('e-date').value=new Date(e.ts).toISOString().slice(0,10);
+  document.getElementById('e-desc').value=e.desc||'';
+  document.getElementById('e-amt').value=e.amount;
+  document.getElementById('e-desc-wrap').style.display=isSettle?'none':'';
+  editModal.hidden=false;
+}
+document.getElementById('editClose').onclick=()=>editModal.hidden=true;
+editModal.onclick=ev=>{if(ev.target===editModal)editModal.hidden=true;};
+document.getElementById('editSave').onclick=async()=>{
+  const e=entries.find(x=>x.id===editId); if(!e)return;
+  const amount=parseFloat(document.getElementById('e-amt').value);
+  if(!(amount>0)){document.getElementById('e-amt').focus();return;}
+  e.who=document.getElementById('e-who').value;
+  e.amount=Math.round(amount*100)/100;
+  if(e.type!=='settle')e.desc=document.getElementById('e-desc').value.trim();
+  const iso=document.getElementById('e-date').value||todayISO();
+  e.ts=tsFromDate(iso);
+  persist();render();dbUpdate(e);
+  editModal.hidden=true;
+};
+document.getElementById('editDelete').onclick=async()=>{
+  const id=editId; editModal.hidden=true;
+  const i=entries.findIndex(e=>e.id===id); if(i<0)return;
+  entries.splice(i,1);persist();render();dbDelete(id);
+};
+
+// ---- settle modal ----
+const settleModal=document.getElementById('settleModal');
+document.getElementById('settleBtn').onclick=()=>{
+  const bal=netOwed();
+  const hint=document.getElementById('settleHint');
+  if(Math.abs(bal)<0.005){hint.textContent='Everything is settled — you can still record a payment.';}
+  else if(bal>0){hint.textContent='Gav owes Phil '+R(bal)+'.';document.getElementById('s-who').value='gav';document.getElementById('s-amt').value=Math.round(bal*100)/100;}
+  else{hint.textContent='Phil owes Gav '+R(-bal)+'.';document.getElementById('s-who').value='phil';document.getElementById('s-amt').value=Math.round(-bal*100)/100;}
+  document.getElementById('s-date').value=todayISO();
+  settleModal.hidden=false;
+};
+document.getElementById('settleClose').onclick=()=>settleModal.hidden=true;
+document.getElementById('settleCancel').onclick=()=>settleModal.hidden=true;
+settleModal.onclick=ev=>{if(ev.target===settleModal)settleModal.hidden=true;};
+document.getElementById('settleSave').onclick=async()=>{
+  const who=document.getElementById('s-who').value;
+  const amount=parseFloat(document.getElementById('s-amt').value);
+  if(!(amount>0)){document.getElementById('s-amt').focus();return;}
+  const iso=document.getElementById('s-date').value||todayISO();
+  const e={id:newId(),who,desc:'Settlement',amount:Math.round(amount*100)/100,ts:tsFromDate(iso),type:'settle'};
+  entries.push(e);persist();render();dbInsert(e);
+  settleModal.hidden=true;
+};
+
+// ---- supabase ----
 async function initSupabase(){
   const dot=document.getElementById('syncDot'),msg=document.getElementById('syncMsg');
   if(typeof SUPABASE_URL==='undefined'||!SUPABASE_URL||!SUPABASE_ANON_KEY||!window.supabase){dot.className='dotstat off';msg.innerHTML='Local only — add Supabase keys to sync';return;}
@@ -152,23 +307,25 @@ async function initSupabase(){
     const {data,error}=await sb.from('spend').select('*').order('created_at',{ascending:true});
     if(error)throw error;
     entries.length=0;
-    (data||[]).forEach(r=>entries.push({id:r.id,who:r.who,desc:r.description,amount:Number(r.amount),ts:r.created_at?Date.parse(r.created_at):Date.now()}));
-    persist(); render();
+    (data||[]).forEach(r=>entries.push({id:r.id,who:r.who,desc:r.description,amount:Number(r.amount),ts:r.created_at?Date.parse(r.created_at):Date.now(),type:r.kind||'spend'}));
+    persist();render();
     channel=sb.channel('spend').on('postgres_changes',{event:'*',schema:'public',table:'spend'},payload=>{
-      if(payload.eventType==='INSERT'){const r=payload.new;if(!entries.find(e=>e.id===r.id)){entries.push({id:r.id,who:r.who,desc:r.description,amount:Number(r.amount),ts:r.created_at?Date.parse(r.created_at):Date.now()});persist();render();}}
+      if(payload.eventType==='INSERT'){const r=payload.new;if(!entries.find(e=>e.id===r.id)){entries.push({id:r.id,who:r.who,desc:r.description,amount:Number(r.amount),ts:r.created_at?Date.parse(r.created_at):Date.now(),type:r.kind||'spend'});persist();render();}}
+      else if(payload.eventType==='UPDATE'){const r=payload.new;const e=entries.find(x=>x.id===r.id);if(e){e.who=r.who;e.desc=r.description;e.amount=Number(r.amount);e.type=r.kind||'spend';e.ts=r.created_at?Date.parse(r.created_at):e.ts;persist();render();}}
       else if(payload.eventType==='DELETE'){const i=entries.findIndex(e=>e.id===payload.old.id);if(i>=0){entries.splice(i,1);persist();render();}}
     }).subscribe();
-    online=true; dot.className='dotstat on'; msg.innerHTML='Live sync on';
+    online=true;dot.className='dotstat on';msg.innerHTML='Live sync on';
   }catch(e){console.error(e);dot.className='dotstat off';msg.innerHTML='Sync error — running local only';}
 }
 
 document.getElementById('addBtn').onclick=addEntry;
 document.getElementById('amt').addEventListener('keydown',e=>{if(e.key==='Enter')addEntry();});
 document.getElementById('desc').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('amt').focus();});
+document.getElementById('date').value=todayISO();
 document.getElementById('ver').textContent=(typeof APP_VERSION!=='undefined')?APP_VERSION:'';
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
 
-restore(); render(); initSupabase();
+restore();render();initSupabase();
 </script>
 </body>
 </html>

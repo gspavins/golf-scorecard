@@ -7,8 +7,10 @@ create table if not exists public.spend (
   who         text not null,          -- 'gav' or 'phil'
   description text,
   amount      numeric not null,       -- rand
+  kind        text default 'spend',   -- 'spend' or 'settle'
   created_at  timestamptz default now()
 );
+alter table public.spend add column if not exists kind text default 'spend';
 
 alter table public.spend enable row level security;
 drop policy if exists "spend all" on public.spend;

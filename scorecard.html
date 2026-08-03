@@ -432,15 +432,18 @@ function build(){
   persistLocal();
 }
 function status(){
-  let up=0;
-  HOLES.forEach(h=>{const a=shownScore('gav',h),b=shownScore('phil',h);if(a!=null&&b!=null){if(a<b)up++;else if(b<a)up--;}});
   const gP=stablefordTotal('gav',1,18),pP=stablefordTotal('phil',1,18);
   const gG=psum('gav',1,18),pG=psum('phil',1,18);
   document.getElementById('gav-sc').textContent=gG?`${gG} · ${gP} pts`:'–';
   document.getElementById('phil-sc').textContent=pG?`${pG} · ${pP} pts`:'–';
+  // lead is based on total score over holes BOTH have played
+  let gTot=0,pTot=0,common=false;
+  HOLES.forEach(h=>{const a=shownScore('gav',h),b=shownScore('phil',h);if(a!=null&&b!=null){gTot+=a;pTot+=b;common=true;}});
   const lead=document.getElementById('lead');
-  if(up>0)lead.innerHTML=`<b>Gav</b> — ${up} up`;
-  else if(up<0)lead.innerHTML=`<b>Phil</b> — ${-up} up`;
+  if(!common){lead.textContent='All square';return;}
+  const diff=pTot-gTot;   // positive = Gav lower (better)
+  if(diff>0)lead.innerHTML=`<b>Gav</b> — ${diff} ahead`;
+  else if(diff<0)lead.innerHTML=`<b>Phil</b> — ${-diff} ahead`;
   else lead.textContent='All square';
 }
 
@@ -541,7 +544,7 @@ async function subscribeGame(pushIfEmpty){
   const {data,error}=await sb.from('scores').select('*').eq('game_id',gameId);
   if(error)throw error;
   if(data&&data.length){
-    data.forEach(r=>{if(r.player==='__meta'){if(COURSES[r.course])courseKey=r.course;hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;if(r.game_date)gameDate=r.game_date;gameFinal=!!r.final;}
+    data.forEach(r=>{if(r.player==='__meta'){if(COURSES[r.course])courseKey=r.course;if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;if(r.game_date)gameDate=r.game_date;gameFinal=!!r.final;}
       else if(scores[r.player]){scores[r.player][r.hole]=r.strokes;}});
   }else if(pushIfEmpty){
     await pushMeta();
@@ -549,7 +552,7 @@ async function subscribeGame(pushIfEmpty){
   channel=sb.channel('game-'+gameId)
     .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
       const r=payload.new; if(!r)return;
-      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}hcap.gav=r.hcap_gav||0;hcap.phil=r.hcap_phil||0;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){setDate(r.game_date);}gameFinal=!!r.final;updateFinalUI();}
+      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){setDate(r.game_date);}gameFinal=!!r.final;updateFinalUI();}
       else if(scores[r.player]){if(r.strokes==null)delete scores[r.player][r.hole];else scores[r.player][r.hole]=r.strokes;}
       build();
     }).subscribe();
@@ -575,7 +578,11 @@ async function fetchGames(){
         const t=r.updated_at?Date.parse(r.updated_at):0;
         if(t>g.updated)g.updated=t;
       });
-      const all=Object.values(map).map(g=>({id:g.id,date:g.date||'',course:g.course,holes:g.holes.size,gav:g.gav,phil:g.phil,updated:g.updated,final:!!g.final}));
+      const ixLocal=loadIndex();
+      const all=Object.values(map).map(g=>{
+        const localFinal=ixLocal[g.id]&&ixLocal[g.id].final;
+        return {id:g.id,date:g.date||'',course:g.course,holes:g.holes.size,gav:g.gav,phil:g.phil,updated:g.updated,final:!!(g.final||localFinal)};
+      });
       // the most recently touched game (within the last 6h) that isn't final is the "live" one
       const now=Date.now();
       let liveId=null,newest=0;
@@ -585,9 +592,17 @@ async function fetchGames(){
       return all.sort((a,b)=>(b.updated||0)-(a.updated||0));
     }catch(e){console.error(e);}
   }
-  // local fallback
+  // local fallback — read each stored game for holes + final
   const ix=loadIndex();
-  return Object.values(ix).map(g=>({...g,live:g.id===liveGameId})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.updated-a.updated);
+  const list=Object.values(ix).map(g=>{
+    let gav=0,phil=0,final=!!g.final;
+    try{const d=JSON.parse(localStorage.getItem('sc:'+g.id)||'{}');
+      gav=Object.keys(d.scores?.gav||{}).length;phil=Object.keys(d.scores?.phil||{}).length;
+      if(d.gameFinal!=null)final=!!d.gameFinal;
+    }catch(e){}
+    return {...g,gav,phil,final,live:(g.id===liveGameId&&!final)};
+  });
+  return list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.updated-a.updated);
 }
 async function saveHole(who,hole,strokes){
   persistLocal();
@@ -693,6 +708,16 @@ async function openGames(){
       const ix=loadIndex();delete ix[id];saveIndex(ix);
       try{localStorage.removeItem('sc:'+id);}catch(e){}
       if(online&&sb){try{await sb.from('scores').delete().eq('game_id',id);}catch(e){}}
+      if(id===gameId||id===liveGameId){
+        // deleted the game we're on (or the live one) — start a clean game
+        const g="g"+Math.random().toString(36).slice(2,8);
+        liveGameId=g;
+        if(localStorage.getItem('lastGame')===id)localStorage.setItem('lastGame',g);
+        modal.hidden=true;
+        await switchGame(g);
+        if(online&&sb)await pushMeta();
+        return;
+      }
       openGames();
     };
   });
