@@ -303,21 +303,27 @@ document.getElementById('settleSave').onclick=async()=>{
 // ---- supabase ----
 async function initSupabase(){
   const dot=document.getElementById('syncDot'),msg=document.getElementById('syncMsg');
-  if(typeof SUPABASE_URL==='undefined'||!SUPABASE_URL||!SUPABASE_ANON_KEY||!window.supabase){dot.className='dotstat off';msg.innerHTML='Local only — add Supabase keys to sync';return;}
+  const badKey = typeof SUPABASE_URL==='undefined'||!SUPABASE_URL||!SUPABASE_ANON_KEY||/PUBLISHABLE_KEY|YOUR_|xxxx|paste/i.test(SUPABASE_ANON_KEY)||!window.supabase;
+  if(badKey){dot.className='dotstat off';msg.innerHTML='Local only — Supabase key not set in config.js';return;}
   try{
     sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     const {data,error}=await sb.from('spend').select('*').order('created_at',{ascending:true});
     if(error)throw error;
+    // merge DB with any local-only entries, then push locals up
+    const dbIds=new Set((data||[]).map(r=>r.id));
+    const localOnly=entries.filter(e=>!dbIds.has(e.id));
     entries.length=0;
     (data||[]).forEach(r=>entries.push({id:r.id,who:r.who,desc:r.description,amount:Number(r.amount),ts:r.created_at?Date.parse(r.created_at):Date.now(),type:r.kind||'spend'}));
+    localOnly.forEach(e=>entries.push(e));
     persist();render();
+    for(const e of localOnly){await dbInsert(e);}
     channel=sb.channel('spend').on('postgres_changes',{event:'*',schema:'public',table:'spend'},payload=>{
       if(payload.eventType==='INSERT'){const r=payload.new;if(!entries.find(e=>e.id===r.id)){entries.push({id:r.id,who:r.who,desc:r.description,amount:Number(r.amount),ts:r.created_at?Date.parse(r.created_at):Date.now(),type:r.kind||'spend'});persist();render();}}
       else if(payload.eventType==='UPDATE'){const r=payload.new;const e=entries.find(x=>x.id===r.id);if(e){e.who=r.who;e.desc=r.description;e.amount=Number(r.amount);e.type=r.kind||'spend';e.ts=r.created_at?Date.parse(r.created_at):e.ts;persist();render();}}
       else if(payload.eventType==='DELETE'){const i=entries.findIndex(e=>e.id===payload.old.id);if(i>=0){entries.splice(i,1);persist();render();}}
     }).subscribe();
     online=true;dot.className='dotstat on';msg.innerHTML='Live sync on';
-  }catch(e){console.error(e);dot.className='dotstat off';msg.innerHTML='Sync error — running local only';}
+  }catch(e){console.error(e);online=false;sb=null;dot.className='dotstat off';msg.innerHTML='Not syncing — check Supabase key/policies (running local)';}
 }
 
 document.getElementById('addBtn').onclick=addEntry;

@@ -20,11 +20,13 @@ create table if not exists public.scores (
   hole       int     not null,          -- 1..18, or 0 for the meta row
   strokes    int,                       -- gross strokes on the hole
   course     text,                       -- only used on the __meta row
+  game_date  date,                       -- round date (on the __meta row)
   hcap_gav   int,
   hcap_phil  int,
   updated_at timestamptz default now(),
   primary key (game_id, player, hole)
 );
+alter table public.scores add column if not exists game_date date;
 
 -- allow the anon key to read/write (simple setup for a private 2-player app)
 alter table public.scores enable row level security;
@@ -73,7 +75,11 @@ The status strip under the course picker turns **green** when live sync is on.
 - Tap **New game** to start a fresh card with a new id.
 - Pick the course from the dropdown; the whole card (par, stroke index, tee
   distances) swaps to match. The choice syncs to both phones.
+- Set the **date** with the date picker (defaults to today).
 - Set each handicap top-right — stroke dots and Stableford points update live.
+- Tap **Games** to see previous rounds. Pick one to open and edit its scores,
+  or tap **Back to round in progress** / **Return to live round** to come back
+  to the current game. A gold banner shows when you're viewing a past round.
 
 ## Notes on course data
 
@@ -82,3 +88,90 @@ and converted to metres. Tee used per course: Kloof = White, Durban CC = Yellow,
 Royal Johannesburg (East) = Blue, Mowbray = Blue. Only courses with a full,
 verifiable hole-by-hole scorecard are included. To add another, extend the
 `COURSES` object in the script with the same `{n,d,par,si}` shape.
+
+---
+
+## Versioning & auto-update
+
+The app shows its version at the bottom (e.g. `v1.0.0`) and updates itself
+automatically:
+
+- A service worker (`sw.js`) caches the app for offline use and checks for a
+  newer version every time it loads (and once a minute while open).
+- When you deploy a change, players get it on their next open — no manual
+  refresh or cache-clearing needed. The footer briefly shows "updating…" and
+  the page reloads once with the new code.
+
+**When you make changes, bump the version in _two_ places so clients update:**
+
+1. In `index.html`: `const APP_VERSION = "1.0.0";`
+2. In `sw.js`: `const CACHE_VERSION = "1.0.0";`
+
+Use the same number in both (e.g. `1.0.1`, `1.1.0`). That new value invalidates
+the old cache and forces every device to pull the fresh files.
+
+> Note: the service worker only runs over **https** (GitHub Pages is https) or
+> on `localhost`. Opening the file directly from disk won't register it, but the
+> app still works — it just won't auto-update until it's hosted.
+
+---
+
+## Adding courses (via the database)
+
+Courses live in two Supabase tables so you can add new ones **without editing
+the app**:
+
+- `courses` — one row per course (`id`, `name`, `location`, `tee`, `par`, `active`)
+- `course_holes` — 18 rows per course (`course_id`, `hole`, `distance`, `par`, `stroke_index`)
+
+**One-time setup:** run `courses.sql` (SQL Editor → paste → Run). It creates the
+tables, sets read access + realtime, and seeds the six built-in courses.
+
+**To add a course later**, run something like this (SQL Editor), or use the
+Supabase Table Editor to add the rows by hand:
+
+```sql
+insert into public.courses (id, name, location, tee, par)
+values ('mynewcourse', 'My New Course', 'Town, Prov', 'White', 72);
+
+insert into public.course_holes (course_id, hole, distance, par, stroke_index) values
+  ('mynewcourse', 1, 370, 4, 5),
+  ('mynewcourse', 2, 150, 3, 15),
+  -- ... holes 3–17 ...
+  ('mynewcourse', 18, 410, 4, 8);
+```
+
+Rules the app expects:
+- Exactly **18 holes** per course (courses with fewer are ignored).
+- `stroke_index` values **1–18, each used once**.
+- `distance` is in **metres** (convert yards × 0.9144 if needed).
+- Set a course's `active` to `false` to hide it without deleting.
+
+The app reads the catalogue from the database on load (and falls back to the
+six built-in courses when offline or before `courses.sql` has been run). New
+courses appear next time the app is opened.
+
+---
+
+## v2 — landing page, progress chart, finalise, spend tracker
+
+The app now opens on a **landing page** (`index.html`) with:
+- **New scorecard / Resume round / Past rounds** → the scorecard (`scorecard.html`)
+- **Spend tracker** → `spend.html`
+
+New in the scorecard:
+- **Progress tab** — swipe right (or tap Progress) for a cumulative chart; toggle
+  Strokes / To Par / Points.
+- **Mark final** — flags a finished round (still editable). Final games show a
+  "Final" tag in the games list and no longer count as the "live" round.
+
+**Extra database setup for v2** (run once each in the SQL Editor):
+1. `spend.sql` — creates the spend tracker table.
+2. The `final` column was added to `supabase.sql`; if your `scores` table already
+   exists, just run this line:
+   ```sql
+   alter table public.scores add column if not exists final boolean default false;
+   ```
+
+Config note: Supabase keys + version now live in **`config.js`**, shared by all
+three pages — set them once there (the old inline block is gone).

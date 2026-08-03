@@ -502,21 +502,26 @@ function promoteToLive(){
 // ---------- Supabase sync ----------
 async function initSupabase(){
   const dot=document.getElementById('syncDot'),msg=document.getElementById('syncMsg');
-  if(!SUPABASE_URL||!SUPABASE_ANON_KEY||!window.supabase){
+  const badKey = !SUPABASE_URL || !SUPABASE_ANON_KEY || /PUBLISHABLE_KEY|YOUR_|xxxx|paste/i.test(SUPABASE_ANON_KEY) || !window.supabase;
+  if(badKey){
     dot.className='dotstat off';
-    msg.innerHTML='Local only — add Supabase keys to sync live';
+    msg.innerHTML='Local only — Supabase key not set in config.js';
     return;
   }
   try{
     sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    // connectivity test: a harmless read (does NOT create any rows)
+    const test=await sb.from('scores').select('game_id').limit(1);
+    if(test.error) throw test.error;
     online=true;
     await loadCoursesFromDB();
-    await subscribeGame(true);
+    await subscribeGame(true);   // load this game's rows (pushes meta only if truly new)
+    build();                      // render whatever we loaded
   }catch(e){
-    console.error(e);
-    online=false;
+    console.error('Supabase connect failed:',e);
+    online=false; sb=null;
     dot.className='dotstat off';
-    msg.innerHTML='Sync error — running local only';
+    msg.innerHTML='Not syncing — check Supabase key/policies (running local)';
   }
 }
 // Load the course catalogue from Supabase (falls back to built-in COURSES)
@@ -627,6 +632,19 @@ async function pushMeta(){
   if(!online||!sb)return;
   try{await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()},{onConflict:'game_id,player,hole'});}
   catch(e){console.error(e);}
+}
+// upload every locally-held score for this game (used right after connecting)
+async function pushAllLocal(){
+  if(!online||!sb)return;
+  const rows=[{game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()}];
+  for(const who of ['gav','phil']){
+    for(const h in scores[who]){
+      if(scores[who][h]!=null)rows.push({game_id:gameId,player:who,hole:+h,strokes:scores[who][h],updated_at:new Date().toISOString()});
+    }
+  }
+  if(rows.length<=1)return;   // nothing but meta
+  try{await sb.from('scores').upsert(rows,{onConflict:'game_id,player,hole'});}
+  catch(e){console.error('pushAllLocal failed',e);}
 }
 
 // ---------- UI wiring ----------
