@@ -1,0 +1,3 @@
+
+const SUPABASE_URL = "https://ydejaktiyrcwsvwdgxpb.supabase.co/rest/v1/";      // e.g. "https://xxxx.supabase.co"
+const SUPABASE_ANON_KEY = "sb_publishable_DIpdPuQTWun5RqKD0DleSA_oRErvGb9"; // e.g. "eyJhbGci..."

@@ -15,8 +15,6 @@ card from different phones.
 - **Tap-to-enter** scores; birdies/eagles ring automatically; won holes shade.
 - **Live sync (optional)** via Supabase — share the `?game=` link and both
   phones update in real time. Works fully offline/local with no setup.
-- **Game history** — pick a date, browse previous rounds, reopen any one to
-  view or edit its scores, then jump back to the round in progress.
 - **Installable** — "Add to Home Screen" gives it the app icon.
 
 ## Quick start
@@ -32,15 +30,9 @@ and host on GitHub Pages.
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Landing page (menu) |
-| `scorecard.html` | The scorecard app + progress chart |
-| `spend.html` | Spend tracker |
-| `config.js` | Shared Supabase keys + version |
-| `sw.js` | Service worker — offline cache + auto-update |
+| `index.html` | The whole app (HTML + CSS + JS in one file) |
 | `golf-icon.png` | App / favicon / home-screen icon |
-| `supabase.sql` | Scores table + policies (+ `final` column) |
-| `spend.sql` | Spend tracker table |
-| `courses.sql` | Course catalogue tables + the six built-in courses |
+| `supabase.sql` | Table + policies to paste into the Supabase SQL editor |
 | `SETUP.md` | Step-by-step Supabase + GitHub Pages setup |
 
 ## Hosting on GitHub Pages
