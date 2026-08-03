@@ -101,6 +101,14 @@
   .chartbox{position:relative;height:46vh;min-height:240px}
   .chartlegend{display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:11px;color:var(--dim)}
   .chartlegend span{display:inline-flex;align-items:center;gap:5px}
+  .statstable{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+  .statstable th,.statstable td{border:1px solid var(--hair);padding:6px 4px;text-align:center}
+  .statstable thead th{background:var(--green);color:#fff;font-size:11px;font-weight:700}
+  .statstable thead th:first-child{text-align:left;padding-left:8px}
+  .statstable tbody td:first-child{text-align:left;padding-left:8px;font-weight:700}
+  .statstable tbody tr:nth-child(1) td:first-child{color:var(--green-dk)}
+  .statstable tbody tr:nth-child(2) td:first-child{color:var(--gold)}
+  .statstable .ringcol{color:#e2001a;font-weight:700}
   .cl{width:14px;height:4px;border-radius:2px;display:inline-block}
   .cardwrap.last{border-radius:0 0 9px 9px}
   table{border-collapse:collapse;width:100%;font-size:11.5px;table-layout:fixed}
@@ -179,8 +187,8 @@
     .meta{font-size:10px}
     .sync{padding:3px 10px;font-size:9px}
     .tab{padding:6px 6px;font-size:11px}
-    .sval,.sval input{height:26px;font-size:14px}
-    th,td{padding:3px 0;font-size:11px}
+    .sval,.sval input{height:29px;font-size:14px}
+    th,td{padding:4px 0;font-size:11px}
     tr.pscore td{padding:1px}
     .status{padding:5px 12px}
     .status .lead{font-size:14px}
@@ -234,7 +242,7 @@
 
   <div class="tabs">
     <button class="tab active" data-i="0" id="tab-card">Scorecard</button>
-    <button class="tab" data-i="1" id="tab-chart">Progress</button>
+    <button class="tab" data-i="1" id="tab-chart">Statistics</button>
   </div>
 
   <div class="slides" id="slides">
@@ -273,6 +281,10 @@
        <span><i class="cl" style="background:#0f5c34"></i> Gav</span>
        <span><i class="cl" style="background:#b8912f"></i> Phil</span>
      </div>
+     <table class="statstable" id="statsTable">
+       <thead><tr><th>Player</th><th>-2</th><th>-1</th><th>Par</th><th>+1</th><th>+2</th><th>+3</th><th>Ring</th></tr></thead>
+       <tbody id="statsBody"></tbody>
+     </table>
    </section>
   </div>
 
@@ -852,6 +864,30 @@ function updateChart(){
   };
   if(chart){chart.data=cfg.data;chart.options=cfg.options;chart.update();}
   else{chart=new Chart(cv.getContext('2d'),cfg);}
+  updateStats();
+}
+// per-player tally: eagles(-2 or better), birdies(-1), par, bogey(+1), double(+2), triple+(+3 or worse), rings(capped/0-pt holes)
+function playerStats(who){
+  const s={e:0,b:0,p:0,bo:0,d:0,t:0,ring:0};
+  for(const h of HOLES){
+    const g=scores[who][h.n];
+    if(g==null)continue;
+    if(isCapped(who,h)){s.ring++;continue;}   // a ring (net double bogey+, 0 pts) is counted separately
+    const diff=g-h.par;
+    if(diff<=-2)s.e++;
+    else if(diff===-1)s.b++;
+    else if(diff===0)s.p++;
+    else if(diff===1)s.bo++;
+    else if(diff===2)s.d++;
+    else s.t++;   // +3 or worse (that isn't already a ring)
+  }
+  return s;
+}
+function updateStats(){
+  const body=document.getElementById('statsBody');
+  if(!body)return;
+  const row=(name,s)=>`<tr><td>${name}</td><td>${s.e||''}</td><td>${s.b||''}</td><td>${s.p||''}</td><td>${s.bo||''}</td><td>${s.d||''}</td><td>${s.t||''}</td><td class="ringcol">${s.ring||''}</td></tr>`;
+  body.innerHTML=row('Gav',playerStats('gav'))+row('Phil',playerStats('phil'));
 }
 document.querySelectorAll('.ct').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.ct').forEach(x=>x.classList.remove('active'));
