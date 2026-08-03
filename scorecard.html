@@ -586,43 +586,44 @@ async function subscribeGame(pushIfEmpty){
 }
 // fetch all games (from Supabase meta rows if online, else local index)
 async function fetchGames(){
-  if(online&&sb){
+  const merged={};
+  // 1) pull from the database whenever we have a client (not gated on the online flag)
+  if(sb){
     try{
-      const {data,error}=await sb.from('scores').select('game_id,course,game_date,player,hole,strokes,updated_at,final');
+      const {data,error}=await sb.from('scores').select('game_id,course,game_date,player,hole,strokes,updated_at,final').limit(5000);
       if(error)throw error;
-      const map={};
       data.forEach(r=>{
-        const g=map[r.game_id]||(map[r.game_id]={id:r.game_id,date:null,course:'kloof',holes:new Set(),gav:0,phil:0,updated:0});
+        const g=merged[r.game_id]||(merged[r.game_id]={id:r.game_id,date:null,course:'kloof',holes:new Set(),gav:0,phil:0,updated:0,final:false});
         if(r.player==='__meta'){if(r.game_date)g.date=r.game_date;if(COURSES[r.course])g.course=r.course;g.final=!!r.final;}
         else if(r.strokes!=null){g.holes.add(r.player+':'+r.hole);if(r.player==='gav')g.gav++;else if(r.player==='phil')g.phil++;}
-        const t=r.updated_at?Date.parse(r.updated_at):0;
-        if(t>g.updated)g.updated=t;
+        const t=r.updated_at?Date.parse(r.updated_at):0; if(t>g.updated)g.updated=t;
       });
-      const ixLocal=loadIndex();
-      const all=Object.values(map).map(g=>{
-        const localFinal=ixLocal[g.id]&&ixLocal[g.id].final;
-        return {id:g.id,date:g.date||'',course:g.course,holes:g.holes.size,gav:g.gav,phil:g.phil,updated:g.updated,final:!!(g.final||localFinal)};
-      });
-      // the most recently touched game (within the last 6h) that isn't final is the "live" one
-      const now=Date.now();
-      let liveId=null,newest=0;
-      all.forEach(g=>{if(!g.final&&g.updated>newest){newest=g.updated;liveId=g.id;}});
-      if(now-newest>6*60*60*1000)liveId=null;   // nothing active recently
-      all.forEach(g=>g.live=(g.id===liveId));
-      return all.sort((a,b)=>(b.updated||0)-(a.updated||0));
-    }catch(e){console.error(e);}
+    }catch(e){console.error('fetchGames DB error',e);}
   }
-  // local fallback — read each stored game for holes + final
-  const ix=loadIndex();
-  const list=Object.values(ix).map(g=>{
-    let gav=0,phil=0,final=!!g.final;
-    try{const d=JSON.parse(localStorage.getItem('sc:'+g.id)||'{}');
+  // 2) merge in local games (so offline / not-yet-synced games also show)
+  const ixLocal=loadIndex();
+  Object.values(ixLocal).forEach(li=>{
+    let gav=0,phil=0,final=!!li.final,date=li.date||'';
+    try{const d=JSON.parse(localStorage.getItem('sc:'+li.id)||'{}');
       gav=Object.keys(d.scores?.gav||{}).length;phil=Object.keys(d.scores?.phil||{}).length;
-      if(d.gameFinal!=null)final=!!d.gameFinal;
+      if(d.gameFinal!=null)final=!!d.gameFinal; if(d.gameDate)date=d.gameDate;
     }catch(e){}
-    return {...g,gav,phil,final,live:(g.id===liveGameId&&!final)};
+    const g=merged[li.id];
+    if(g){ g.gav=Math.max(g.gav,gav); g.phil=Math.max(g.phil,phil); g.final=g.final||final; if(!g.date&&date)g.date=date; if((li.updated||0)>g.updated)g.updated=li.updated||g.updated; }
+    else { merged[li.id]={id:li.id,date,course:li.course||'kloof',holes:new Set(),gav,phil,updated:li.updated||0,final}; }
   });
-  return list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||b.updated-a.updated);
+  // 3) shape + live detection
+  const all=Object.values(merged).map(g=>({
+    id:g.id,date:g.date||'',course:g.course,
+    holes:(g.holes&&g.holes.size)||Math.max(g.gav||0,g.phil||0,0),
+    gav:g.gav||0,phil:g.phil||0,updated:g.updated||0,final:!!g.final
+  }));
+  const now=Date.now();
+  let liveId=null,newest=0;
+  all.forEach(g=>{if(!g.final&&g.updated>newest){newest=g.updated;liveId=g.id;}});
+  if(now-newest>6*60*60*1000)liveId=null;
+  all.forEach(g=>g.live=(g.id===liveId));
+  return all.sort((a,b)=>(b.updated||0)-(a.updated||0));
 }
 async function saveHole(who,hole,strokes){
   persistLocal();
