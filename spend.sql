@@ -16,4 +16,9 @@ alter table public.spend enable row level security;
 drop policy if exists "spend all" on public.spend;
 create policy "spend all" on public.spend for all using (true) with check (true);
 
-alter publication supabase_realtime add table public.spend;
+-- add to realtime (ignore error if it's already a member)
+do $$
+begin
+  alter publication supabase_realtime add table public.spend;
+exception when duplicate_object then null;
+end $$;

@@ -413,6 +413,7 @@ function editCell(el){
     const raw=inp.value.trim();
     if(raw==='')delete scores[who][h];
     else{let n=parseInt(raw,10);if(!isNaN(n)&&n>0)scores[who][h]=Math.min(n,15);}
+    promoteToLive();
     saveHole(who,h,scores[who][h]??null);
     build();
   };
@@ -483,8 +484,19 @@ function saveIndex(ix){try{localStorage.setItem('gamesIndex',JSON.stringify(ix))
 function indexGame(){
   const ix=loadIndex();
   const holesPlayed=new Set([...Object.keys(scores.gav),...Object.keys(scores.phil)]).size;
-  ix[gameId]={id:gameId,date:gameDate,course:courseKey,holes:holesPlayed,updated:Date.now(),final:gameFinal};
+  // while just reviewing, keep the game's existing timestamp so it doesn't jump to "live"
+  const prev=ix[gameId];
+  const updated=(reviewing&&prev)?prev.updated:Date.now();
+  ix[gameId]={id:gameId,date:gameDate,course:courseKey,holes:holesPlayed,updated,final:gameFinal};
   saveIndex(ix);
+}
+// turn the game currently under review into the live/resumable round (on first edit)
+function promoteToLive(){
+  if(!reviewing)return;
+  reviewing=false;
+  liveGameId=gameId;
+  localStorage.setItem('lastGame',gameId);
+  updateBanner();
 }
 
 // ---------- Supabase sync ----------
@@ -622,11 +634,11 @@ function buildCourseDropdown(){
   const sel=document.getElementById('course');
   sel.innerHTML=Object.keys(COURSES).map(k=>`<option value="${k}">${COURSES[k].name}</option>`).join('');
   sel.value=courseKey;
-  sel.onchange=e=>{loadCourse(e.target.value);pushMeta();};
+  sel.onchange=e=>{promoteToLive();loadCourse(e.target.value);pushMeta();};
 }
-document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
-document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));build();pushMeta();};
-document.getElementById('gameDateInput').onchange=e=>{setDate(e.target.value);pushMeta();indexGame();};
+document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
+document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
+document.getElementById('gameDateInput').onchange=e=>{promoteToLive();setDate(e.target.value);pushMeta();indexGame();};
 document.getElementById('reset').onclick=async()=>{
   if(!confirm('Clear all scores for this game?'))return;
   scores.gav={};scores.phil={};build();
@@ -635,24 +647,27 @@ document.getElementById('reset').onclick=async()=>{
 
 // ---- switch to a different game in place (no page reload) ----
 let liveGameId=gameId;   // the round considered "in progress"
-async function switchGame(id){
+let reviewing=false;     // true when viewing a past game (not the live round)
+async function switchGame(id, review){
   gameId=id;
+  reviewing=!!review;
   const u=new URL(location.href);u.searchParams.set('game',id);history.replaceState(null,'',u);
-  localStorage.setItem('lastGame',id);
+  if(!review) localStorage.setItem('lastGame',id);   // only a live game becomes the resumable one
   // reset in-memory state, then load
-  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();
+  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();gameFinal=false;
   restoreLocal();
   document.getElementById('hc-gav').value=hcap.gav;
   document.getElementById('hc-phil').value=hcap.phil;
   setDate(gameDate);
   document.getElementById('course').value=courseKey;
   loadCourse(courseKey);
+  updateFinalUI();
   if(online&&sb){try{await subscribeGame(false);build();}catch(e){console.error(e);}}
   updateBanner();
 }
 function updateBanner(){
   const b=document.getElementById('viewBanner');
-  b.hidden = (gameId===liveGameId);
+  b.hidden = !reviewing;
 }
 
 document.getElementById('newGame').onclick=async()=>{
@@ -696,7 +711,7 @@ async function openGames(){
   gameList.querySelectorAll('.grow').forEach(row=>{
     row.onclick=async e=>{
       if(e.target.closest('.gdel'))return;
-      await switchGame(row.dataset.id);
+      await switchGame(row.dataset.id, true);
       modal.hidden=true;
     };
   });
@@ -792,6 +807,8 @@ document.getElementById('finalBtn').onclick=()=>{
 document.getElementById('menuBtn').onclick=()=>{location.href='index.html';};
 
 
+// ---------- boot ----------
+restoreLocal();
 liveGameId=gameId;
 document.getElementById('hc-gav').value=hcap.gav;
 document.getElementById('hc-phil').value=hcap.phil;

@@ -46,8 +46,16 @@ create policy "courses write" on public.courses      for all using (true) with c
 create policy "holes write"    on public.course_holes for all using (true) with check (true);
 
 -- realtime so a newly added course appears without a redeploy
-alter publication supabase_realtime add table public.courses;
-alter publication supabase_realtime add table public.course_holes;
+do $$
+begin
+  alter publication supabase_realtime add table public.courses;
+exception when duplicate_object then null;
+end $$;
+do $$
+begin
+  alter publication supabase_realtime add table public.course_holes;
+exception when duplicate_object then null;
+end $$;
 
 -- Course data — seed the built-in courses
 -- Safe to re-run: upserts on primary keys

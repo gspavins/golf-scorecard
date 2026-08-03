@@ -32,7 +32,11 @@ create policy "anon update" on public.scores for update using (true);
 create policy "anon delete" on public.scores for delete using (true);
 
 -- Enable realtime so both phones update live
-alter publication supabase_realtime add table public.scores;
+do $$
+begin
+  alter publication supabase_realtime add table public.scores;
+exception when duplicate_object then null;
+end $$;
 
 -- Added for "Mark final" game status:
 alter table public.scores add column if not exists final boolean default false;
