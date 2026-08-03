@@ -732,6 +732,7 @@ document.getElementById('reset').onclick=async()=>{
 // ---- switch to a different game in place (no page reload) ----
 let liveGameId=gameId;   // the round considered "in progress"
 let reviewing=false;     // true when viewing a past game (not the live round)
+let listOnly=false;      // true when the page is showing only the games list (from Past rounds)
 let metaWritten=false;   // whether we've written the meta row for the current game
 async function switchGame(id, review){
   gameId=id;
@@ -796,6 +797,7 @@ async function openGames(){
   gameList.querySelectorAll('.grow').forEach(row=>{
     row.onclick=async e=>{
       if(e.target.closest('.gdel'))return;
+      if(listOnly){listOnly=false;document.querySelector('.wrap').style.visibility='';}
       await switchGame(row.dataset.id, true);
       modal.hidden=true;
     };
@@ -823,7 +825,7 @@ async function openGames(){
   });
 }
 document.getElementById('gamesBtn').onclick=openGames;
-document.getElementById('gamesClose').onclick=()=>modal.hidden=true;
+document.getElementById('gamesClose').onclick=()=>{ if(listOnly){location.href='index.html';} else {modal.hidden=true;} };
 modal.onclick=e=>{if(e.target===modal)modal.hidden=true;};
 document.getElementById('backToLive').onclick=async()=>{await switchGame(liveGameId);modal.hidden=true;};
 document.getElementById('returnLive').onclick=async()=>{await switchGame(liveGameId);};
@@ -929,7 +931,11 @@ buildCourseDropdown();
 loadCourse(courseKey);
 updateFinalUI();
 initSupabase();
-if(new URL(location.href).searchParams.get('games')==='1'){setTimeout(()=>{try{openGames();}catch(e){}},400);}
+if(new URL(location.href).searchParams.get('games')==='1'){
+  listOnly=true;
+  document.querySelector('.wrap').style.visibility='hidden';   // don't show a scorecard behind the list
+  setTimeout(()=>{try{openGames();}catch(e){}},300);
+}
 
 // ---------- auto-update via service worker ----------
 (function(){
