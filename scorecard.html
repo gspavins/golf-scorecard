@@ -49,6 +49,11 @@
   .modal[hidden]{display:none}
   .sheet{background:var(--card);width:100%;max-width:520px;max-height:82vh;border-radius:14px 14px 0 0;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.3)}
   @media(min-width:560px){.modal{align-items:center}.sheet{border-radius:14px}}
+  /* full-screen list mode (from Past rounds) */
+  .modal.full{background:var(--card);align-items:stretch}
+  .modal.full .sheet{max-width:none;max-height:none;width:100%;height:100%;border-radius:0;box-shadow:none}
+  .modal.full .gamelist{flex:1}
+  .modal.full .sheetfoot{display:none}
   .sheethead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--hair);font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--green-dk)}
   .sheethead .x{background:none;border:none;font-size:24px;line-height:1;color:var(--dim);cursor:pointer;padding:0 4px}
   .gamelist{overflow-y:auto;padding:8px}
@@ -797,7 +802,7 @@ async function openGames(){
   gameList.querySelectorAll('.grow').forEach(row=>{
     row.onclick=async e=>{
       if(e.target.closest('.gdel'))return;
-      if(listOnly){listOnly=false;document.querySelector('.wrap').style.visibility='';}
+      if(listOnly){listOnly=false;document.querySelector('.wrap').style.visibility='';modal.classList.remove('full');}
       await switchGame(row.dataset.id, true);
       modal.hidden=true;
     };
@@ -934,6 +939,7 @@ initSupabase();
 if(new URL(location.href).searchParams.get('games')==='1'){
   listOnly=true;
   document.querySelector('.wrap').style.visibility='hidden';   // don't show a scorecard behind the list
+  document.getElementById('gamesModal').classList.add('full');
   setTimeout(()=>{try{openGames();}catch(e){}},300);
 }
 
