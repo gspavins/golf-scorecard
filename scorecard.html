@@ -561,8 +561,11 @@ async function subscribeGame(pushIfEmpty){
   const {data,error}=await sb.from('scores').select('*').eq('game_id',gameId);
   if(error)throw error;
   if(data&&data.length){
-    data.forEach(r=>{if(r.player==='__meta'){if(COURSES[r.course])courseKey=r.course;if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;if(r.game_date)gameDate=r.game_date;gameFinal=!!r.final;}
+    let hasMeta=false;
+    data.forEach(r=>{if(r.player==='__meta'){hasMeta=true;if(COURSES[r.course])courseKey=r.course;if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;if(r.game_date)gameDate=r.game_date;gameFinal=!!r.final;}
       else if(scores[r.player]){scores[r.player][r.hole]=r.strokes;}});
+    // self-heal: game has scores but no meta row (course + handicaps) — write it from what we have
+    if(!hasMeta) await pushMeta();
   }else if(pushIfEmpty){
     await pushMeta();
   }
