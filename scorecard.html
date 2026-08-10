@@ -13,7 +13,7 @@
   :root{
     --ink:#293234;--card:#f4f7f4;--line:#c3ccc3;--hair:#d3ddd3;
     --champ:#f5d800;--champ-dk:#e8c400;
-    --club:#e9f0e9;--par:#e2d0d0;--green:#293234;--green-dk:#1e2627;
+    --club:#f4f2ea;--par:#f7cdcd;--green:#293234;--green-dk:#1e2627;
     --gold:#7fa87f;--dim:#6f7a76;--win:#d8ecd8;--clay:#b45b3e;
     --pastel:#c5dac5;--pastel-soft:#dceadc;--pastel-deep:#7fa87f;
   }
@@ -123,26 +123,26 @@
   col.lbl{width:74px}
   col.sum{width:30px}
   th,td{border:1px solid var(--hair);text-align:center;padding:3px 0;white-space:nowrap;overflow:hidden}
-  thead th{background:var(--pastel-soft);font-weight:700;font-size:10px;color:var(--ink)}
+  thead th{background:#efece3;font-weight:700;font-size:10px;color:var(--ink)}
   thead th.p3{background:#cfe4f0}
   thead th.p5{background:#e0dcef}
   th.hole-label,td.row-label{text-align:left;padding-left:8px;font-weight:700;font-size:10.5px}
-  td.row-label{background:var(--pastel-soft)}
-  tr td.out,tr td.tot,tr.pscore td.out,tr.pscore td.tot,tr.pts td.out{background:var(--pastel-soft);font-weight:800}
+  td.row-label{background:#f5f3ec}
+  tr td.out,tr td.tot,tr.pscore td.out,tr.pscore td.tot,tr.pts td.out{background:#efece3;font-weight:800}
 
   tr.club td{background:var(--club)}
-  tr.club td.row-label{background:#dbe6db}
+  tr.club td.row-label{background:#e9e6dc}
   tr.par td{background:var(--par);font-weight:700}
   tr.par td.row-label{background:var(--par)}
   tr.stroke td{color:#555;font-size:10.5px}
   tr.stroke td.row-label{color:var(--ink)}
 
-  tr.pscore td.row-label{background:var(--green);color:#fff;font-weight:800;padding:3px 0 3px 8px}
+  tr.pscore td.row-label{background:#0f5c34;color:#fff;font-weight:800;padding:3px 0 3px 8px}
   tr.pscore td{background:#fff;padding:1px}
   tr.pscore td.p3{background:#cfe4f0}
   tr.pscore td.p5{background:#e0dcef}
-  tr.pts td{background:var(--pastel-soft);color:var(--green-dk);font-weight:700;font-size:10.5px}
-  tr.pts td.row-label{background:#dbe6db;color:var(--green-dk);font-weight:700}
+  tr.pts td{background:#f5f3ec;color:#0a3f24;font-weight:700;font-size:10.5px}
+  tr.pts td.row-label{background:#e9e6dc;color:#0a3f24;font-weight:700}
 
   .sval{display:flex;align-items:center;justify-content:center;width:100%;height:26px;font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:13px;font-weight:700;position:relative;cursor:pointer;border-radius:4px;-webkit-tap-highlight-color:transparent;color:var(--ink)}
   .sval:hover{background:rgba(15,92,52,.12)}
@@ -152,14 +152,14 @@
   .sval.capped .ring{border:2px solid #e2001a;border-radius:50%}
   .sval.eagle .num{font-weight:800}
   .sval .ring{position:absolute;inset:3px;pointer-events:none;z-index:1}
-  .sval.birdie .ring{border:2px solid var(--green);border-radius:50%}
-  .sval.eagle .ring{border:2px solid #c79a2b;border-radius:50%}
-  .sval.eagle .ring::after{content:"";position:absolute;inset:-3px;z-index:1;border:2px solid #c79a2b;border-radius:50%}
+  .sval.birdie .ring{border:2px solid #0f5c34;border-radius:50%}
+  .sval.eagle .ring{border:2px solid #b8912f;border-radius:50%}
+  .sval.eagle .ring::after{content:"";position:absolute;inset:-3px;z-index:1;border:2px solid #b8912f;border-radius:50%}
   .sval input{width:100%;height:26px;border:2px solid var(--green);border-radius:4px;text-align:center;font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:13px;font-weight:700;color:var(--ink);padding:0;outline:none;background:#fff;-moz-appearance:textfield}
   .sval input::-webkit-outer-spin-button,.sval input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .sval .rs{position:absolute;top:0;right:2px;font-size:8px;line-height:1;color:var(--clay);z-index:2;letter-spacing:-1px}
   td.holewon{background:var(--win)!important;position:relative}
-  td.holewon::after{content:"";position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--green)}
+  td.holewon::after{content:"";position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:#0f5c34}
 
   .lower{margin-top:6px}
   .status{background:var(--green);color:#fff;border-radius:9px;padding:7px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -173,7 +173,7 @@
   .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:6px;font-size:10.5px;color:var(--dim)}
   .legend span{display:inline-flex;align-items:center;gap:5px}
   .lg{width:14px;height:14px;display:inline-block;border-radius:50%}
-  .lg.e{border:2px solid #c79a2b;box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 4px #c79a2b}
+  .lg.e{border:2px solid #b8912f;box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 4px #b8912f}
   .lg.b{border:2px solid var(--green)}
 
   .actions{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
