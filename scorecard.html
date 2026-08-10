@@ -677,13 +677,17 @@ async function fetchGames(){
     let gav=0,phil=0,gavShots=0,philShots=0,final=!!li.final,date=li.date||'';
     try{const d=JSON.parse(localStorage.getItem('sc:'+li.id)||'{}');
       const sg=d.scores?.gav||{},sp=d.scores?.phil||{};
+      const ck=(d.courseKey&&COURSES[d.courseKey])?d.courseKey:(li.course||'kloof');
+      const hc={gav:d.hcap?.gav||0,phil:d.hcap?.phil||0};
+      const holesArr=(COURSES[ck]||COURSES.kloof).holes;
+      const capped=(who,scoresObj)=>{let s=0;holesArr.forEach(h=>{const v=scoresObj[h.n];if(v==null)return;let str=0;if(hc[who]>=h.si)str++;if(hc[who]>=h.si+18)str++;const max=h.par+str+2;s+=Math.min(v,max);});return s;};
       gav=Object.keys(sg).length;phil=Object.keys(sp).length;
-      gavShots=Object.values(sg).reduce((a,b)=>a+(+b||0),0);
-      philShots=Object.values(sp).reduce((a,b)=>a+(+b||0),0);
+      gavShots=capped('gav',sg);
+      philShots=capped('phil',sp);
       if(d.gameFinal!=null)final=!!d.gameFinal; if(d.gameDate)date=d.gameDate;
     }catch(e){}
     const g=merged[li.id];
-    if(g){ g.gav=Math.max(g.gav,gav); g.phil=Math.max(g.phil,phil); g.gavShots=Math.max(g.gavShots||0,gavShots); g.philShots=Math.max(g.philShots||0,philShots); g.final=g.final||final; if(!g.date&&date)g.date=date; if((li.updated||0)>g.updated)g.updated=li.updated||g.updated; }
+    if(g){ g.gav=Math.max(g.gav,gav); g.phil=Math.max(g.phil,phil); if(gavShots)g.gavShots=gavShots; if(philShots)g.philShots=philShots; g.final=g.final||final; if(!g.date&&date)g.date=date; if((li.updated||0)>g.updated)g.updated=li.updated||g.updated; }
     else { merged[li.id]={id:li.id,date,course:li.course||'kloof',holes:new Set(),gav,phil,gavShots,philShots,updated:li.updated||0,final}; }
   });
   // 3) shape + live detection — only games with at least one real score
