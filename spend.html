@@ -150,7 +150,14 @@
 <script>
 const entries=[];   // {id, who, desc, amount, ts, type:'spend'|'settle'}
 let sb=null, online=false, channel=null;
-const R=n=>'R'+(Math.round(n*100)/100).toLocaleString('en-ZA',{minimumFractionDigits:0,maximumFractionDigits:2});
+const R=n=>{
+  const v=Math.round((+n||0)*100)/100;
+  const hasCents=Math.round(v*100)%100!==0;
+  const s=v.toFixed(hasCents?2:0);                 // '.' decimal, 2 places only when needed
+  const [intPart,dec]=s.split('.');
+  const grouped=intPart.replace(/\B(?=(\d{3})+(?!\d))/g,',');  // thousands separator
+  return 'R'+grouped+(dec?'.'+dec:'');
+};
 const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
