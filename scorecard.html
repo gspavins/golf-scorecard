@@ -8,17 +8,18 @@
 <link rel="apple-touch-icon" href="golf-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Golf Card">
-<meta name="theme-color" content="#0f5c34">
+<meta name="theme-color" content="#293234">
 <style>
   :root{
-    --ink:#1e1e1e;--card:#fff;--line:#3a3a3a;--hair:#b9b6ab;
+    --ink:#293234;--card:#f4f7f4;--line:#c3ccc3;--hair:#d3ddd3;
     --champ:#f5d800;--champ-dk:#e8c400;
-    --club:#f4f2ea;--par:#f7cdcd;--green:#0f5c34;--green-dk:#0a3f24;
-    --gold:#b8912f;--dim:#6d6a60;--win:#d8ecd8;--clay:#b45b3e;
+    --club:#e9f0e9;--par:#e2d0d0;--green:#293234;--green-dk:#1e2627;
+    --gold:#7fa87f;--dim:#6f7a76;--win:#c5dac5;--clay:#b45b3e;
+    --pastel:#c5dac5;--pastel-soft:#dceadc;--pastel-deep:#7fa87f;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
-  body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:radial-gradient(120% 90% at 50% 0%,#eceae1,#cfccc0);color:var(--ink);padding:8px;min-height:100vh}
+  body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:radial-gradient(120% 90% at 50% 0%,#e3ece3,#cdd8cd);color:var(--ink);padding:8px;min-height:100vh}
   .wrap{max-width:940px;margin:0 auto}
 
   header{background:var(--card);border:2px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;padding:8px 14px;display:flex;align-items:center;gap:12px}
@@ -58,7 +59,7 @@
   .sheethead .x{background:none;border:none;font-size:24px;line-height:1;color:var(--dim);cursor:pointer;padding:0 4px}
   .gamelist{overflow-y:auto;padding:8px}
   .grow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--hair);border-radius:9px;margin-bottom:8px;cursor:pointer;background:#fff}
-  .grow:hover{background:#f4f2ea}
+  .grow:hover{background:var(--pastel-soft)}
   .grow.current{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
   .grow .gmain{flex:1;min-width:0}
   .grow .gdate{font-weight:800;font-size:13px;color:var(--ink)}
@@ -74,11 +75,11 @@
   .gempty{text-align:center;color:var(--dim);padding:24px;font-size:13px}
   .sheetfoot{padding:12px 16px;border-top:1px solid var(--hair)}
   .sheetfoot button{width:100%;font:inherit;font-weight:700;font-size:13px;padding:10px;border-radius:8px;cursor:pointer;border:1px solid var(--green-dk);background:var(--green);color:#fff}
-  .viewbanner{background:var(--gold);color:#3a2c00;text-align:center;font-size:11px;font-weight:700;padding:5px;border:2px solid var(--line);border-top:none}
+  .viewbanner{background:var(--pastel);color:var(--green-dk);text-align:center;font-size:11px;font-weight:700;padding:5px;border:2px solid var(--line);border-top:none}
   .viewbanner[hidden]{display:none}
-  .viewbanner button{margin-left:8px;font:inherit;font-weight:700;font-size:11px;background:#3a2c00;color:var(--gold);border:none;border-radius:4px;padding:2px 8px;cursor:pointer}
+  .viewbanner button{margin-left:8px;font:inherit;font-weight:700;font-size:11px;background:var(--green);color:var(--pastel);border:none;border-radius:4px;padding:2px 8px;cursor:pointer}
 
-  .sync{font-size:10px;padding:4px 12px;background:#efece3;border:2px solid var(--line);border-top:none;border-bottom:none;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:center}
+  .sync{font-size:10px;padding:4px 12px;background:var(--pastel-soft);border:2px solid var(--line);border-top:none;border-bottom:none;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:center}
   .sync b{color:var(--green-dk)}
   .dotstat{width:8px;height:8px;border-radius:50%;background:#bbb;flex:0 0 auto}
   .dotstat.on{background:#2ea043}
@@ -91,7 +92,7 @@
 
   /* tabs */
   .tabs{display:flex;background:var(--card);border:2px solid var(--line);border-top:none}
-  .tab{flex:1;font:inherit;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:8px 6px;background:#efece3;color:var(--dim);border:none;border-right:1px solid var(--hair);cursor:pointer}
+  .tab{flex:1;font:inherit;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:8px 6px;background:var(--pastel-soft);color:var(--dim);border:none;border-right:1px solid var(--hair);cursor:pointer}
   .tab:last-child{border-right:none}
   .tab.active{background:var(--green);color:#fff}
   .slides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;border:2px solid var(--line);border-top:none;border-radius:0 0 9px 9px;background:var(--card)}
@@ -103,7 +104,7 @@
   /* progress chart */
   #slide-chart{padding:10px}
   .charttabs{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
-  .ct{font:inherit;font-weight:700;font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--hair);background:#f4f2ea;color:var(--dim);cursor:pointer}
+  .ct{font:inherit;font-weight:700;font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--hair);background:var(--pastel-soft);color:var(--dim);cursor:pointer}
   .ct.active{background:var(--green);color:#fff;border-color:var(--green-dk)}
   .chartbox{position:relative;height:46vh;min-height:240px}
   .chartlegend{display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:11px;color:var(--dim)}
@@ -122,15 +123,15 @@
   col.lbl{width:74px}
   col.sum{width:30px}
   th,td{border:1px solid var(--hair);text-align:center;padding:3px 0;white-space:nowrap;overflow:hidden}
-  thead th{background:#efece3;font-weight:700;font-size:10px;color:#2c2c2c}
-  thead th.p3{background:#cfe4f0}
-  thead th.p5{background:#e0dcef}
+  thead th{background:var(--pastel-soft);font-weight:700;font-size:10px;color:var(--ink)}
+  thead th.p3{background:#d3e6ea}
+  thead th.p5{background:#e6dcea}
   th.hole-label,td.row-label{text-align:left;padding-left:8px;font-weight:700;font-size:10.5px}
-  td.row-label{background:#f5f3ec}
-  tr td.out,tr td.tot,tr.pscore td.out,tr.pscore td.tot,tr.pts td.out{background:#efece3;font-weight:800}
+  td.row-label{background:var(--pastel-soft)}
+  tr td.out,tr td.tot,tr.pscore td.out,tr.pscore td.tot,tr.pts td.out{background:var(--pastel-soft);font-weight:800}
 
   tr.club td{background:var(--club)}
-  tr.club td.row-label{background:#e9e6dc}
+  tr.club td.row-label{background:#dbe6db}
   tr.par td{background:var(--par);font-weight:700}
   tr.par td.row-label{background:var(--par)}
   tr.stroke td{color:#555;font-size:10.5px}
@@ -138,10 +139,10 @@
 
   tr.pscore td.row-label{background:var(--green);color:#fff;font-weight:800;padding:3px 0 3px 8px}
   tr.pscore td{background:#fff;padding:1px}
-  tr.pscore td.p3{background:#cfe4f0}
-  tr.pscore td.p5{background:#e0dcef}
-  tr.pts td{background:#f5f3ec;color:var(--green-dk);font-weight:700;font-size:10.5px}
-  tr.pts td.row-label{background:#e9e6dc;color:var(--green-dk);font-weight:700}
+  tr.pscore td.p3{background:#d3e6ea}
+  tr.pscore td.p5{background:#e6dcea}
+  tr.pts td{background:var(--pastel-soft);color:var(--green-dk);font-weight:700;font-size:10.5px}
+  tr.pts td.row-label{background:#dbe6db;color:var(--green-dk);font-weight:700}
 
   .sval{display:flex;align-items:center;justify-content:center;width:100%;height:26px;font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:13px;font-weight:700;position:relative;cursor:pointer;border-radius:4px;-webkit-tap-highlight-color:transparent;color:var(--ink)}
   .sval:hover{background:rgba(15,92,52,.12)}
@@ -152,8 +153,8 @@
   .sval.eagle .num{font-weight:800}
   .sval .ring{position:absolute;inset:3px;pointer-events:none;z-index:1}
   .sval.birdie .ring{border:2px solid var(--green);border-radius:50%}
-  .sval.eagle .ring{border:2px solid var(--gold);border-radius:50%}
-  .sval.eagle .ring::after{content:"";position:absolute;inset:-3px;z-index:1;border:2px solid var(--gold);border-radius:50%}
+  .sval.eagle .ring{border:2px solid #c79a2b;border-radius:50%}
+  .sval.eagle .ring::after{content:"";position:absolute;inset:-3px;z-index:1;border:2px solid #c79a2b;border-radius:50%}
   .sval input{width:100%;height:26px;border:2px solid var(--green);border-radius:4px;text-align:center;font-family:"Segoe UI",system-ui,Arial,sans-serif;font-size:13px;font-weight:700;color:var(--ink);padding:0;outline:none;background:#fff;-moz-appearance:textfield}
   .sval input::-webkit-outer-spin-button,.sval input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .sval .rs{position:absolute;top:0;right:2px;font-size:8px;line-height:1;color:var(--clay);z-index:2;letter-spacing:-1px}
@@ -163,7 +164,7 @@
   .lower{margin-top:6px}
   .status{background:var(--green);color:#fff;border-radius:9px;padding:7px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
   .status .lead{font-family:Georgia,serif;font-size:17px;font-weight:700}
-  .status .lead b{color:var(--champ)}
+  .status .lead b{color:var(--pastel)}
   .status .totals{display:flex;gap:14px}
   .status .totals div{text-align:center}
   .status .totals .nm{font-size:9px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
@@ -172,7 +173,7 @@
   .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:6px;font-size:10.5px;color:var(--dim)}
   .legend span{display:inline-flex;align-items:center;gap:5px}
   .lg{width:14px;height:14px;display:inline-block;border-radius:50%}
-  .lg.e{border:2px solid var(--gold);box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 4px var(--gold)}
+  .lg.e{border:2px solid #c79a2b;box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 4px #c79a2b}
   .lg.b{border:2px solid var(--green)}
 
   .actions{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
@@ -181,7 +182,7 @@
   .actions button:active{transform:translateY(1px)}
   .foot{text-align:center;font-size:10px;color:var(--dim);margin-top:6px;line-height:1.5}
   .foot b{color:#444}
-  .foot code{background:#e9e6dc;padding:1px 4px;border-radius:3px;font-size:9.5px}
+  .foot code{background:#dbe6db;padding:1px 4px;border-radius:3px;font-size:9.5px}
   .ver{margin-top:3px;font-size:9px;color:#9a968c;letter-spacing:.04em}
 
   @media(max-width:640px){
@@ -294,8 +295,8 @@
      </div>
      <div class="chartbox"><canvas id="progChart"></canvas></div>
      <div class="chartlegend">
-       <span><i class="cl" style="background:#0f5c34"></i> Gav</span>
-       <span><i class="cl" style="background:#b8912f"></i> Phil</span>
+       <span><i class="cl" style="background:#293234"></i> Gav</span>
+       <span><i class="cl" style="background:#7fa87f"></i> Phil</span>
      </div>
      <table class="statstable" id="statsTable">
        <thead><tr><th>Player</th><th>-2</th><th>-1</th><th>Par</th><th>+1</th><th>+2</th><th>+3</th><th>Ring</th></tr></thead>
@@ -877,8 +878,8 @@ function updateChart(){
   const cfg={
     type:'line',
     data:{labels,datasets:[
-      {label:'Gav',data:gav,borderColor:'#0f5c34',backgroundColor:'#0f5c34',tension:.25,spanGaps:true,pointRadius:2},
-      {label:'Phil',data:phil,borderColor:'#b8912f',backgroundColor:'#b8912f',tension:.25,spanGaps:true,pointRadius:2}
+      {label:'Gav',data:gav,borderColor:'#293234',backgroundColor:'#293234',tension:.25,spanGaps:true,pointRadius:2},
+      {label:'Phil',data:phil,borderColor:'#7fa87f',backgroundColor:'#7fa87f',tension:.25,spanGaps:true,pointRadius:2}
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
