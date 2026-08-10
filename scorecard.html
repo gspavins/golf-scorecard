@@ -63,6 +63,8 @@
   .grow .gmain{flex:1;min-width:0}
   .grow .gdate{font-weight:800;font-size:13px;color:var(--ink)}
   .grow .gcourse{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .grow .gshots{display:flex;gap:14px;margin-top:4px;font-size:12px;color:var(--ink)}
+  .grow .gshots b{font-weight:800;color:var(--green-dk)}
   .grow .gpts{text-align:right;font-size:11px;color:var(--green-dk);font-weight:700;white-space:nowrap}
   .grow .gpts b{font-family:Georgia,serif;font-size:14px}
   .grow .gtag{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--green);border-radius:4px;padding:1px 5px;margin-left:6px}
@@ -213,6 +215,15 @@
 </style>
 </head>
 <body>
+<script>
+  // If arriving from "Past rounds", hide the scorecard before it paints so only the list shows.
+  if(new URL(location.href).searchParams.get('games')==='1'){
+    document.documentElement.setAttribute('data-listonly','1');
+  }
+</script>
+<style>
+  html[data-listonly] .wrap{visibility:hidden}
+</style>
 <div class="wrap">
 
   <header>
@@ -653,9 +664,9 @@ async function fetchGames(){
       if(error)throw error;
       lastFetchInfo=`DB returned ${data?data.length:0} rows`;
       data.forEach(r=>{
-        const g=merged[r.game_id]||(merged[r.game_id]={id:r.game_id,date:null,course:'kloof',holes:new Set(),gav:0,phil:0,updated:0,final:false});
+        const g=merged[r.game_id]||(merged[r.game_id]={id:r.game_id,date:null,course:'kloof',holes:new Set(),gav:0,phil:0,gavShots:0,philShots:0,updated:0,final:false});
         if(r.player==='__meta'){if(r.game_date)g.date=r.game_date;if(COURSES[r.course])g.course=r.course;g.final=!!r.final;}
-        else if(r.strokes!=null){g.holes.add(r.player+':'+r.hole);if(r.player==='gav')g.gav++;else if(r.player==='phil')g.phil++;}
+        else if(r.strokes!=null){g.holes.add(r.player+':'+r.hole);if(r.player==='gav'){g.gav++;g.gavShots+=r.strokes;}else if(r.player==='phil'){g.phil++;g.philShots+=r.strokes;}}
         const t=r.updated_at?Date.parse(r.updated_at):0; if(t>g.updated)g.updated=t;
       });
     }catch(e){console.error('fetchGames DB error',e);lastFetchInfo='DB read ERROR: '+(e&&e.message?e.message:e);}
@@ -663,20 +674,23 @@ async function fetchGames(){
   // 2) merge in local games (so offline / not-yet-synced games also show)
   const ixLocal=loadIndex();
   Object.values(ixLocal).forEach(li=>{
-    let gav=0,phil=0,final=!!li.final,date=li.date||'';
+    let gav=0,phil=0,gavShots=0,philShots=0,final=!!li.final,date=li.date||'';
     try{const d=JSON.parse(localStorage.getItem('sc:'+li.id)||'{}');
-      gav=Object.keys(d.scores?.gav||{}).length;phil=Object.keys(d.scores?.phil||{}).length;
+      const sg=d.scores?.gav||{},sp=d.scores?.phil||{};
+      gav=Object.keys(sg).length;phil=Object.keys(sp).length;
+      gavShots=Object.values(sg).reduce((a,b)=>a+(+b||0),0);
+      philShots=Object.values(sp).reduce((a,b)=>a+(+b||0),0);
       if(d.gameFinal!=null)final=!!d.gameFinal; if(d.gameDate)date=d.gameDate;
     }catch(e){}
     const g=merged[li.id];
-    if(g){ g.gav=Math.max(g.gav,gav); g.phil=Math.max(g.phil,phil); g.final=g.final||final; if(!g.date&&date)g.date=date; if((li.updated||0)>g.updated)g.updated=li.updated||g.updated; }
-    else { merged[li.id]={id:li.id,date,course:li.course||'kloof',holes:new Set(),gav,phil,updated:li.updated||0,final}; }
+    if(g){ g.gav=Math.max(g.gav,gav); g.phil=Math.max(g.phil,phil); g.gavShots=Math.max(g.gavShots||0,gavShots); g.philShots=Math.max(g.philShots||0,philShots); g.final=g.final||final; if(!g.date&&date)g.date=date; if((li.updated||0)>g.updated)g.updated=li.updated||g.updated; }
+    else { merged[li.id]={id:li.id,date,course:li.course||'kloof',holes:new Set(),gav,phil,gavShots,philShots,updated:li.updated||0,final}; }
   });
   // 3) shape + live detection — only games with at least one real score
   const all=Object.values(merged).map(g=>({
     id:g.id,date:g.date||'',course:g.course,
     holes:(g.holes&&g.holes.size)||Math.max(g.gav||0,g.phil||0,0),
-    gav:g.gav||0,phil:g.phil||0,updated:g.updated||0,final:!!g.final
+    gav:g.gav||0,phil:g.phil||0,gavShots:g.gavShots||0,philShots:g.philShots||0,updated:g.updated||0,final:!!g.final
   })).filter(g=>g.holes>0);
   const now=Date.now();
   let liveId=null,newest=0;
@@ -791,10 +805,12 @@ async function openGames(){
     const info=holesPlayed?`${holesPlayed}/18 holes`:'not started';
     const cur=g.id===gameId?' current':'';
     const tag=g.live?'<span class="gtag live">● Live</span>':(g.final?'<span class="gtag" style="background:#6d6a60">Final</span>':'');
+    const shots=holesPlayed?`<div class="gshots"><span>Gav <b>${g.gavShots||0}</b></span><span>Phil <b>${g.philShots||0}</b></span></div>`:'';
     return `<div class="grow${cur}" data-id="${g.id}">
       <div class="gmain">
         <div class="gdate">${g.date?fmtDate(g.date):'(no date)'}${tag}</div>
         <div class="gcourse">${cn} · ${info}</div>
+        ${shots}
       </div>
       <button class="gdel" data-del="${g.id}" title="Delete">🗑</button>
     </div>`;
@@ -802,7 +818,7 @@ async function openGames(){
   gameList.querySelectorAll('.grow').forEach(row=>{
     row.onclick=async e=>{
       if(e.target.closest('.gdel'))return;
-      if(listOnly){listOnly=false;document.querySelector('.wrap').style.visibility='';modal.classList.remove('full');}
+      if(listOnly){listOnly=false;document.documentElement.removeAttribute('data-listonly');document.querySelector('.wrap').style.visibility='';modal.classList.remove('full');}
       await switchGame(row.dataset.id, true);
       modal.hidden=true;
     };
@@ -938,9 +954,8 @@ updateFinalUI();
 initSupabase();
 if(new URL(location.href).searchParams.get('games')==='1'){
   listOnly=true;
-  document.querySelector('.wrap').style.visibility='hidden';   // don't show a scorecard behind the list
   document.getElementById('gamesModal').classList.add('full');
-  setTimeout(()=>{try{openGames();}catch(e){}},300);
+  openGames();   // straight to the list, no delay
 }
 
 // ---------- auto-update via service worker ----------
