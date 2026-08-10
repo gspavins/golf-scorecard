@@ -6,9 +6,9 @@
 <title>Spend Tracker — Gav &amp; Phil</title>
 <link rel="icon" type="image/png" href="golf-icon.png">
 <link rel="apple-touch-icon" href="golf-icon.png">
-<meta name="theme-color" content="#0f5c34">
+<meta name="theme-color" content="#293234">
 <style>
-  :root{--ink:#1e1e1e;--card:#fff;--line:#3a3a3a;--hair:#b9b6ab;--green:#0f5c34;--green-dk:#0a3f24;--gold:#b8912f;--dim:#6d6a60;--clay:#b45b3e}
+  :root{--ink:#293234;--card:#f4f7f4;--line:#c3ccc3;--hair:#d3ddd3;--green:#293234;--green-dk:#1e2627;--gold:#7fa87f;--pastel:#c5dac5;--pastel-soft:#dceadc;--dim:#6f7a76;--clay:#b45b3e}
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
   body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:radial-gradient(120% 90% at 50% 0%,#eceae1,#cfccc0);color:var(--ink);padding:8px;min-height:100vh}
@@ -18,15 +18,15 @@
   header .tt{flex:1}
   header h1{font-family:Georgia,serif;font-size:20px;color:var(--green-dk)}
   header .sub{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-top:2px}
-  header .menu{font:inherit;font-size:12px;font-weight:700;color:var(--green-dk);text-decoration:none;border:1px solid var(--hair);border-radius:7px;padding:6px 10px;background:#f6f4ec}
+  header .menu{font:inherit;font-size:12px;font-weight:700;color:var(--green-dk);text-decoration:none;border:1px solid var(--hair);border-radius:7px;padding:6px 10px;background:var(--pastel-soft)}
 
-  .sync{font-size:10px;padding:4px 12px;background:#efece3;border:2px solid var(--line);border-top:none;border-bottom:none;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:center}
+  .sync{font-size:10px;padding:4px 12px;background:var(--pastel-soft);border:2px solid var(--line);border-top:none;border-bottom:none;color:var(--dim);display:flex;align-items:center;gap:6px;justify-content:center}
   .sync b{color:var(--green-dk)} .dotstat{width:8px;height:8px;border-radius:50%;background:#bbb}.dotstat.on{background:#2ea043}.dotstat.off{background:#d1242f}
 
   .balance{background:linear-gradient(180deg,var(--green-dk),var(--green));color:#fff;border:2px solid var(--line);border-top:none;padding:16px;text-align:center}
-  .balance .who{font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+  .balance .who{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--pastel);opacity:.9}
   .balance .amt{font-family:Georgia,serif;font-size:30px;font-weight:700;margin-top:2px}
-  .balance .amt.settled{color:var(--gold)}
+  .balance .amt.settled{color:var(--pastel)}
   .totals{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border:2px solid var(--line);border-top:none}
   .totals>div{padding:10px;text-align:center;border-right:1px solid var(--hair)}
   .totals>div:last-child{border-right:none}
@@ -35,20 +35,20 @@
 
   .addbar{display:grid;grid-template-columns:80px 116px 1fr 92px 40px;gap:6px;background:var(--card);border:2px solid var(--line);border-top:none;padding:8px}
   .addbar select,.addbar input{font:inherit;font-size:13px;border:1px solid var(--hair);border-radius:6px;padding:7px 6px;background:#fff;color:var(--ink);min-width:0;width:100%}
-  .addbar .add{background:var(--green);color:#fff;border:1px solid var(--green-dk);border-radius:7px;font-size:20px;font-weight:700;cursor:pointer;padding:0}
+  .addbar .add{background:var(--green);color:var(--pastel);border:1px solid var(--green-dk);border-radius:7px;font-size:20px;font-weight:700;cursor:pointer;padding:0}
   .addbar .add:active{transform:translateY(1px)}
   .barrow2{display:flex;gap:6px;background:var(--card);border:2px solid var(--line);border-top:none;padding:0 8px 8px}
-  .barrow2 button{flex:1;font:inherit;font-weight:700;font-size:12px;padding:8px;border-radius:7px;cursor:pointer;border:1px solid var(--hair);background:#f6f4ec;color:var(--green-dk)}
-  .barrow2 button.settle{background:var(--gold);color:#3a2c00;border-color:#9a7723}
+  .barrow2 button{flex:1;font:inherit;font-weight:700;font-size:12px;padding:8px;border-radius:7px;cursor:pointer;border:1px solid var(--hair);background:var(--pastel-soft);color:var(--green-dk)}
+  .barrow2 button.settle{background:var(--gold);color:#fff;border-color:#6b946b}
 
   .list{background:var(--card);border:2px solid var(--line);border-top:none;border-radius:0 0 9px 9px;overflow:hidden}
   .row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--hair);cursor:pointer}
   .row:last-child{border-bottom:none}
   .row:hover{background:#f8f6ef}
-  .row.settlerow{background:#faf6ea}
+  .row.settlerow{background:var(--pastel-soft)}
   .row .pill{flex:0 0 auto;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;border-radius:5px;padding:3px 7px}
   .row .pill.gav{background:var(--green)} .row .pill.phil{background:var(--gold)}
-  .row .pill.settle{background:#3a2c00}
+  .row .pill.settle{background:var(--green)}
   .row .desc{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .row .date{font-size:10px;color:var(--dim)}
   .row .amt{font-family:Georgia,serif;font-weight:700;font-size:15px}
@@ -67,7 +67,7 @@
   .sheetbody label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
   .sheetbody select,.sheetbody input{font:inherit;font-size:15px;border:1px solid var(--hair);border-radius:8px;padding:9px 10px;background:#fff;color:var(--ink);width:100%}
   .sheetfoot{display:flex;gap:8px;padding:0 16px 16px}
-  .sheetfoot button{flex:1;font:inherit;font-weight:700;font-size:14px;padding:11px;border-radius:8px;cursor:pointer;border:1px solid var(--green-dk);background:var(--green);color:#fff}
+  .sheetfoot button{flex:1;font:inherit;font-weight:700;font-size:14px;padding:11px;border-radius:8px;cursor:pointer;border:1px solid var(--green-dk);background:var(--green);color:var(--pastel)}
   .sheetfoot button.ghost{background:transparent;color:var(--green-dk)}
   @media(max-width:480px){.addbar{grid-template-columns:64px 104px 1fr 74px 38px}}
 </style>

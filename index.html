@@ -8,28 +8,28 @@
 <link rel="apple-touch-icon" href="golf-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Golf">
-<meta name="theme-color" content="#0f5c34">
+<meta name="theme-color" content="#293234">
 <style>
-  :root{--ink:#1e1e1e;--card:#fff;--line:#3a3a3a;--hair:#b9b6ab;--green:#0f5c34;--green-dk:#0a3f24;--gold:#b8912f;--dim:#6d6a60}
+  :root{--ink:#293234;--card:#f4f7f4;--line:#c3ccc3;--hair:#d3ddd3;--gun:#293234;--gun-dk:#1e2627;--gun-2:#354042;--pastel:#c5dac5;--pastel-soft:#dceadc;--pastel-deep:#7fa87f;--dim:#6f7a76}
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
-  body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:radial-gradient(120% 90% at 50% 0%,#eceae1,#cfccc0);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .card{background:var(--card);border:2px solid var(--line);border-radius:16px;max-width:400px;width:100%;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.15)}
-  .hero{background:linear-gradient(180deg,var(--green-dk),var(--green));padding:26px 20px 22px;text-align:center;color:#fff}
+  body{font-family:"Segoe UI",system-ui,Arial,sans-serif;background:radial-gradient(120% 90% at 50% 0%,#e3ece3,#cdd8cd);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;max-width:400px;width:100%;overflow:hidden;box-shadow:0 6px 24px rgba(41,50,52,.18)}
+  .hero{background:linear-gradient(180deg,var(--gun-dk),var(--gun));padding:26px 20px 22px;text-align:center;color:#fff}
   .hero img{width:82px;height:82px;border-radius:18px;box-shadow:0 2px 8px rgba(0,0,0,.35);margin-bottom:12px}
-  .hero h1{font-family:Georgia,serif;font-size:24px;letter-spacing:.01em}
-  .hero .sub{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-top:5px}
+  .hero h1{font-family:Georgia,serif;font-size:24px;letter-spacing:.01em;color:#fff}
+  .hero .sub{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--pastel);font-weight:700;margin-top:5px}
   .menu{padding:18px}
-  .item{display:flex;align-items:center;gap:14px;width:100%;text-align:left;text-decoration:none;color:var(--ink);background:#f6f4ec;border:1px solid var(--hair);border-radius:11px;padding:16px;margin-bottom:12px;cursor:pointer;font:inherit;transition:background .12s}
+  .item{display:flex;align-items:center;gap:14px;width:100%;text-align:left;text-decoration:none;color:var(--ink);background:#e9f0e9;border:1px solid var(--hair);border-radius:11px;padding:16px;margin-bottom:12px;cursor:pointer;font:inherit;transition:background .12s}
   .item:last-child{margin-bottom:0}
-  .item:hover{background:#eee9dc}
+  .item:hover{background:var(--pastel-soft)}
   .item:active{transform:translateY(1px)}
-  .item .ic{flex:0 0 auto;width:44px;height:44px;border-radius:11px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px}
-  .item .ic.gold{background:var(--gold)}
+  .item .ic{flex:0 0 auto;width:44px;height:44px;border-radius:11px;background:var(--gun);color:var(--pastel);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .item .ic.gold{background:var(--pastel-deep);color:#fff}
   .item .tx{flex:1;min-width:0}
-  .item .tt{font-weight:800;font-size:16px;color:var(--green-dk)}
+  .item .tt{font-weight:800;font-size:16px;color:var(--gun)}
   .item .ds{font-size:12px;color:var(--dim);margin-top:2px}
-  .item .ar{color:var(--dim);font-size:20px}
+  .item .ar{color:var(--pastel-deep);font-size:20px}
   .item[hidden]{display:none}
   .foot{text-align:center;font-size:10px;color:var(--dim);padding:0 18px 16px}
 </style>
