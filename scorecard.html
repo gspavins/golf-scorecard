@@ -602,9 +602,9 @@ async function initSupabase(){
     online=true;
     dbg('connected OK, reading game '+gameId);
     await loadCoursesFromDB();
-    // course chosen from the Courses page (?course=<id>)
+    // course chosen from the Courses page (?course=<id>) — lock it so it can't be changed here
     const wantCourse=new URL(location.href).searchParams.get('course');
-    if(wantCourse&&COURSES[wantCourse]){courseKey=wantCourse;setCourseInput(courseKey);loadCourse(courseKey);if(new URL(location.href).searchParams.get('new')!=='1')pushMeta();}
+    if(wantCourse&&COURSES[wantCourse]){courseKey=wantCourse;courseLocked=true;setCourseInput(courseKey);loadCourse(courseKey);applyCourseLock();if(new URL(location.href).searchParams.get('new')!=='1')pushMeta();}
     await subscribeGame(false);
     build();
   }catch(e){
@@ -618,23 +618,24 @@ async function initSupabase(){
 async function loadCoursesFromDB(){
   if(!sb)return;
   try{
-    const {data:cs,error:e1}=await sb.from('courses').select('*').eq('active',true);
-    if(e1)throw e1;
+    // fetch ALL courses (don't filter on active — older rows may have null)
+    const cs=await fetchAllRows('courses','id,name,location,tee,par,active');
     if(!cs||!cs.length)return;                 // nothing in DB yet — keep built-ins
-    const {data:hs,error:e2}=await sb.from('course_holes').select('*');
-    if(e2)throw e2;
+    const usable=cs.filter(c=>c.active!==false);   // treat null/true as active
+    // fetch ALL hole rows (Supabase caps at 1000 per request — must paginate)
+    const hs=await fetchAllRows('course_holes','course_id,hole,distance,par,stroke_index');
     const byCourse={};
     (hs||[]).forEach(h=>{(byCourse[h.course_id]||(byCourse[h.course_id]=[])).push(h);});
     const merged={};
-    cs.forEach(c=>{
+    usable.forEach(c=>{
       const holes=(byCourse[c.id]||[]).sort((a,b)=>a.hole-b.hole)
         .map(h=>({n:h.hole,d:h.distance,par:h.par,si:h.stroke_index}));
       if(holes.length===18){                    // only use complete courses
         merged[c.id]={name:c.name,loc:c.location||'',tee:c.tee||'',par:c.par,holes};
       }
     });
+    dbg('courses loaded: '+Object.keys(merged).length+' of '+cs.length);
     if(Object.keys(merged).length){
-      // merge DB courses in (keep built-in keys too, so older games' course refs still resolve)
       Object.assign(COURSES,merged);
       if(!COURSES[courseKey]){
         courseKey=Object.keys(COURSES).sort((a,b)=>COURSES[a].name.localeCompare(COURSES[b].name))[0];
@@ -644,6 +645,19 @@ async function loadCoursesFromDB(){
       loadCourse(courseKey);
     }
   }catch(e){console.error('course load failed, using built-ins',e);}
+}
+// fetch every row from a table in pages of 1000 (Supabase's default cap)
+async function fetchAllRows(table,cols){
+  const out=[]; let from=0; const page=1000;
+  for(let i=0;i<20;i++){                        // safety cap: 20k rows max
+    const {data,error}=await sb.from(table).select(cols).range(from,from+page-1);
+    if(error)throw error;
+    if(!data||!data.length)break;
+    out.push(...data);
+    if(data.length<page)break;
+    from+=page;
+  }
+  return out;
 }
 // (re)load and subscribe to the current gameId
 async function subscribeGame(pushIfEmpty){
@@ -781,15 +795,31 @@ function renderCourseOptions(filter){
     if(k!==courseKey){promoteToLive();courseKey=k;setCourseInput(k);loadCourse(k);pushMeta();}
   });
 }
+function applyCourseLock(){
+  const btn=document.getElementById('courseBtn');
+  if(!btn)return;
+  if(courseLocked){
+    btn.disabled=true;
+    btn.style.opacity='.7';
+    btn.style.cursor='default';
+    btn.title='Course set from the Courses list';
+  }else{
+    btn.disabled=false;
+    btn.style.opacity='';
+    btn.style.cursor='pointer';
+    btn.title='';
+  }
+}
 function buildCourseDropdown(){
   setCourseInput(courseKey);
   const btn=document.getElementById('courseBtn');
   const modal=document.getElementById('courseModal');
   const filter=document.getElementById('courseFilter');
-  btn.onclick=()=>{ filter.value=''; renderCourseOptions(''); modal.hidden=false; setTimeout(()=>filter.focus(),50); };
+  btn.onclick=()=>{ if(courseLocked)return; filter.value=''; renderCourseOptions(''); modal.hidden=false; setTimeout(()=>filter.focus(),50); };
   document.getElementById('courseClose').onclick=()=>modal.hidden=true;
   modal.onclick=e=>{ if(e.target===modal)modal.hidden=true; };
   filter.oninput=()=>renderCourseOptions(filter.value);
+  applyCourseLock();
 }
 document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
 document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
@@ -803,6 +833,7 @@ document.getElementById('reset').onclick=async()=>{
 // ---- switch to a different game in place (no page reload) ----
 let liveGameId=gameId;   // the round considered "in progress"
 let reviewing=false;     // true when viewing a past game (not the live round)
+let courseLocked=false;  // true when course was chosen from the Courses list (not editable here)
 let listOnly=false;      // true when the page is showing only the games list (from Past rounds)
 let metaWritten=false;   // whether we've written the meta row for the current game
 async function switchGame(id, review){
@@ -811,13 +842,14 @@ async function switchGame(id, review){
   const u=new URL(location.href);u.searchParams.set('game',id);history.replaceState(null,'',u);
   if(!review) localStorage.setItem('lastGame',id);   // only a live game becomes the resumable one
   // reset in-memory state, then load
-  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();gameFinal=false;metaWritten=false;
+  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();gameFinal=false;metaWritten=false;courseLocked=false;
   restoreLocal();
   document.getElementById('hc-gav').value=hcap.gav;
   document.getElementById('hc-phil').value=hcap.phil;
   setDate(gameDate);
   setCourseInput(courseKey);
   loadCourse(courseKey);
+  applyCourseLock();
   updateFinalUI();
   if(online&&sb){try{await subscribeGame(false);build();}catch(e){console.error(e);}}
   updateBanner();
