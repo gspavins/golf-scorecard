@@ -40,7 +40,12 @@
   .meta .k{letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;font-size:9px;flex:0 0 auto}
   .meta .v{font-weight:700}
   .meta select{font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:2px 5px;background:#fff;max-width:100%;min-width:0}
-  #courseSearch{flex:1;font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:3px 6px;background:#fff;color:var(--ink);min-width:0;max-width:100%}
+  .coursebtn{flex:1;font:inherit;font-weight:700;font-size:11px;border:1px solid var(--hair);border-radius:5px;padding:4px 8px;background:#fff;color:var(--ink);min-width:0;max-width:100%;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .coursesheet{max-height:80vh;display:flex;flex-direction:column}
+  .courseoptions{overflow:auto;flex:1}
+  .courseoptions button{display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:11px 16px;background:none;border:none;border-bottom:1px solid var(--hair);cursor:pointer;color:var(--ink)}
+  .courseoptions button:hover,.courseoptions button.sel{background:var(--pastel-soft)}
+  .courseoptions button .cpar{font-size:11px;color:var(--dim);margin-left:6px}
   #course{flex:1}
   .datewrap{position:relative;display:inline-flex;align-items:center;flex:1;min-width:0}
   #dateLabel{font-weight:700;white-space:nowrap;pointer-events:none}
@@ -244,8 +249,7 @@
 
   <div class="meta">
     <div><span class="k">Course</span>
-      <input id="courseSearch" list="courseList" placeholder="Type to search…" autocomplete="off">
-      <datalist id="courseList"></datalist>
+      <button type="button" id="courseBtn" class="coursebtn">Kloof Country Club</button>
     </div>
     <div><span class="k">Date</span>
       <span class="datewrap">
@@ -333,6 +337,20 @@
     <div class="sheetfoot">
       <button class="primary" id="backToLive" hidden>Back to round in progress</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="courseModal" hidden>
+  <div class="sheet coursesheet">
+    <div class="sheethead">
+      <span>Choose course</span>
+      <button class="x" id="courseClose">&times;</button>
+    </div>
+    <div style="padding:10px 14px;border-bottom:1px solid var(--hair)">
+      <input id="courseFilter" type="text" placeholder="Search courses…" autocomplete="off"
+        style="width:100%;font:inherit;font-size:15px;border:1px solid var(--hair);border-radius:8px;padding:9px 11px;background:#fff;color:var(--ink)">
+    </div>
+    <div class="courseoptions" id="courseOptions"></div>
   </div>
 </div>
 <script src="config.js"></script>
@@ -746,29 +764,32 @@ async function pushAllLocal(){
 
 // ---------- UI wiring ----------
 function setCourseInput(key){
-  const inp=document.getElementById('courseSearch');
-  if(inp&&COURSES[key])inp.value=COURSES[key].name;
+  const btn=document.getElementById('courseBtn');
+  if(btn&&COURSES[key])btn.textContent=COURSES[key].name;
+}
+function renderCourseOptions(filter){
+  const box=document.getElementById('courseOptions');
+  const q=(filter||'').trim().toLowerCase();
+  const keys=Object.keys(COURSES)
+    .sort((a,b)=>COURSES[a].name.localeCompare(COURSES[b].name))
+    .filter(k=>!q||COURSES[k].name.toLowerCase().includes(q));
+  box.innerHTML=keys.map(k=>`<button type="button" data-key="${k}" class="${k===courseKey?'sel':''}">${COURSES[k].name.replace(/</g,'&lt;')}<span class="cpar">Par ${COURSES[k].par}</span></button>`).join('')
+    || '<div style="padding:20px;text-align:center;color:var(--dim);font-size:13px">No matches</div>';
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.key;
+    document.getElementById('courseModal').hidden=true;
+    if(k!==courseKey){promoteToLive();courseKey=k;setCourseInput(k);loadCourse(k);pushMeta();}
+  });
 }
 function buildCourseDropdown(){
-  const dl=document.getElementById('courseList');
-  const inp=document.getElementById('courseSearch');
-  const keys=Object.keys(COURSES).sort((a,b)=>COURSES[a].name.localeCompare(COURSES[b].name));
-  dl.innerHTML=keys.map(k=>`<option data-key="${k}" value="${COURSES[k].name.replace(/"/g,'&quot;')}"></option>`).join('');
-  if(COURSES[courseKey])inp.value=COURSES[courseKey].name;
-  // tapping the box clears it so you can type a new search immediately
-  inp.onfocus=()=>{inp.dataset.prev=inp.value;inp.value='';};
-  inp.onblur=()=>{ if(!inp.value.trim() && inp.dataset.prev)inp.value=inp.dataset.prev; };
-  const commit=()=>{
-    const name=inp.value.trim();
-    const k=keys.find(k=>COURSES[k].name.toLowerCase()===name.toLowerCase());
-    if(k && k!==courseKey){promoteToLive();courseKey=k;loadCourse(k);pushMeta();inp.dataset.prev=COURSES[k].name;inp.blur();}
-    else if(k){inp.dataset.prev=COURSES[k].name;}
-  };
-  inp.onchange=commit;                 // fires when a datalist option is chosen
-  inp.oninput=()=>{                    // also commit if typed text matches exactly
-    const name=inp.value.trim();
-    if(keys.find(k=>COURSES[k].name.toLowerCase()===name.toLowerCase()))commit();
-  };
+  setCourseInput(courseKey);
+  const btn=document.getElementById('courseBtn');
+  const modal=document.getElementById('courseModal');
+  const filter=document.getElementById('courseFilter');
+  btn.onclick=()=>{ filter.value=''; renderCourseOptions(''); modal.hidden=false; setTimeout(()=>filter.focus(),50); };
+  document.getElementById('courseClose').onclick=()=>modal.hidden=true;
+  modal.onclick=e=>{ if(e.target===modal)modal.hidden=true; };
+  filter.oninput=()=>renderCourseOptions(filter.value);
 }
 document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
 document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
