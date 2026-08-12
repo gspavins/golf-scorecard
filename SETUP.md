@@ -175,3 +175,18 @@ New in the scorecard:
 
 Config note: Supabase keys + version now live in **`config.js`**, shared by all
 three pages — set them once there (the old inline block is gone).
+
+---
+
+## Full SA course catalogue (v2.11)
+
+`courses.sql` now contains the full set of ~324 South African courses (par,
+stroke index, and distances per hole) sourced from the handicaps dataset.
+
+To load them, run `courses.sql` once in the Supabase SQL Editor. It creates/updates
+the `courses` and `course_holes` tables and upserts every course, so it's safe to
+re-run. Course ids are `c<ref>` (e.g. Kloof = `c380`).
+
+In the app, the course field is now a **searchable box** — start typing a course
+name and pick from the list. The app loads the catalogue from Supabase on startup
+and still falls back to the built-in courses when offline.

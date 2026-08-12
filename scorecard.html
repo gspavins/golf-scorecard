@@ -40,6 +40,7 @@
   .meta .k{letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:700;font-size:9px;flex:0 0 auto}
   .meta .v{font-weight:700}
   .meta select{font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:2px 5px;background:#fff;max-width:100%;min-width:0}
+  #courseSearch{flex:1;font:inherit;font-weight:700;border:1px solid var(--hair);border-radius:5px;padding:3px 6px;background:#fff;color:var(--ink);min-width:0;max-width:100%}
   #course{flex:1}
   .datewrap{position:relative;display:inline-flex;align-items:center;flex:1;min-width:0}
   #dateLabel{font-weight:700;white-space:nowrap;pointer-events:none}
@@ -243,7 +244,8 @@
 
   <div class="meta">
     <div><span class="k">Course</span>
-      <select id="course"></select>
+      <input id="courseSearch" list="courseList" placeholder="Type to search…" autocomplete="off">
+      <datalist id="courseList"></datalist>
     </div>
     <div><span class="k">Date</span>
       <span class="datewrap">
@@ -611,11 +613,13 @@ async function loadCoursesFromDB(){
       }
     });
     if(Object.keys(merged).length){
-      // replace the catalogue with the DB version
-      for(const k of Object.keys(COURSES))delete COURSES[k];
+      // merge DB courses in (keep built-in keys too, so older games' course refs still resolve)
       Object.assign(COURSES,merged);
-      if(!COURSES[courseKey])courseKey=Object.keys(COURSES)[0];
+      if(!COURSES[courseKey]){
+        courseKey=Object.keys(COURSES).sort((a,b)=>COURSES[a].name.localeCompare(COURSES[b].name))[0];
+      }
       buildCourseDropdown();
+      setCourseInput(courseKey);
       loadCourse(courseKey);
     }
   }catch(e){console.error('course load failed, using built-ins',e);}
@@ -640,13 +644,13 @@ async function subscribeGame(pushIfEmpty){
   channel=sb.channel('game-'+gameId)
     .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
       const r=payload.new; if(!r)return;
-      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){document.getElementById('course').value=r.course;loadCourse(r.course);}if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){setDate(r.game_date);}gameFinal=!!r.final;updateFinalUI();}
+      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){setCourseInput(r.course);loadCourse(r.course);}if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){setDate(r.game_date);}gameFinal=!!r.final;updateFinalUI();}
       else if(scores[r.player]){if(r.strokes==null)delete scores[r.player][r.hole];else scores[r.player][r.hole]=r.strokes;}
       build();
     }).subscribe();
   dot.className='dotstat on';
   msg.innerHTML=`Live sync on · game <b>${gameId}</b>`;
-  document.getElementById('course').value=courseKey;
+  setCourseInput(courseKey);
   document.getElementById('hc-gav').value=hcap.gav;
   document.getElementById('hc-phil').value=hcap.phil;
   setDate(gameDate);
@@ -738,11 +742,23 @@ async function pushAllLocal(){
 }
 
 // ---------- UI wiring ----------
+function setCourseInput(key){
+  const inp=document.getElementById('courseSearch');
+  if(inp&&COURSES[key])inp.value=COURSES[key].name;
+}
 function buildCourseDropdown(){
-  const sel=document.getElementById('course');
-  sel.innerHTML=Object.keys(COURSES).map(k=>`<option value="${k}">${COURSES[k].name}</option>`).join('');
-  sel.value=courseKey;
-  sel.onchange=e=>{promoteToLive();loadCourse(e.target.value);pushMeta();};
+  const dl=document.getElementById('courseList');
+  const inp=document.getElementById('courseSearch');
+  // sorted by name; map name -> key for lookup
+  const keys=Object.keys(COURSES).sort((a,b)=>COURSES[a].name.localeCompare(COURSES[b].name));
+  dl.innerHTML=keys.map(k=>`<option data-key="${k}" value="${COURSES[k].name.replace(/"/g,'&quot;')}"></option>`).join('');
+  if(COURSES[courseKey])inp.value=COURSES[courseKey].name;
+  inp.onchange=inp.oninput=e=>{
+    const name=e.target.value.trim();
+    // find the course whose name matches (exact, case-insensitive)
+    const k=keys.find(k=>COURSES[k].name.toLowerCase()===name.toLowerCase());
+    if(k){promoteToLive();courseKey=k;loadCourse(k);pushMeta();inp.blur();}
+  };
 }
 document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
 document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
@@ -769,7 +785,7 @@ async function switchGame(id, review){
   document.getElementById('hc-gav').value=hcap.gav;
   document.getElementById('hc-phil').value=hcap.phil;
   setDate(gameDate);
-  document.getElementById('course').value=courseKey;
+  setCourseInput(courseKey);
   loadCourse(courseKey);
   updateFinalUI();
   if(online&&sb){try{await subscribeGame(false);build();}catch(e){console.error(e);}}
