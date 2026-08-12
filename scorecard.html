@@ -391,7 +391,7 @@ function setDate(iso){
 function getGameId(){
   const u = new URL(location.href);
   let g = u.searchParams.get("game");
-  if(u.searchParams.get("new")==="1"){          // "New scorecard" from landing page
+  if(u.searchParams.get("new")==="1" || u.searchParams.get("view")==="1"){  // fresh card from landing/courses
     g = "g" + Math.random().toString(36).slice(2,8);
     u.searchParams.delete("new");
   }
@@ -584,6 +584,9 @@ async function initSupabase(){
     online=true;
     dbg('connected OK, reading game '+gameId);
     await loadCoursesFromDB();
+    // course chosen from the Courses page (?course=<id>)
+    const wantCourse=new URL(location.href).searchParams.get('course');
+    if(wantCourse&&COURSES[wantCourse]){courseKey=wantCourse;setCourseInput(courseKey);loadCourse(courseKey);if(new URL(location.href).searchParams.get('new')!=='1')pushMeta();}
     await subscribeGame(false);
     build();
   }catch(e){
@@ -749,15 +752,22 @@ function setCourseInput(key){
 function buildCourseDropdown(){
   const dl=document.getElementById('courseList');
   const inp=document.getElementById('courseSearch');
-  // sorted by name; map name -> key for lookup
   const keys=Object.keys(COURSES).sort((a,b)=>COURSES[a].name.localeCompare(COURSES[b].name));
   dl.innerHTML=keys.map(k=>`<option data-key="${k}" value="${COURSES[k].name.replace(/"/g,'&quot;')}"></option>`).join('');
   if(COURSES[courseKey])inp.value=COURSES[courseKey].name;
-  inp.onchange=inp.oninput=e=>{
-    const name=e.target.value.trim();
-    // find the course whose name matches (exact, case-insensitive)
+  // tapping the box clears it so you can type a new search immediately
+  inp.onfocus=()=>{inp.dataset.prev=inp.value;inp.value='';};
+  inp.onblur=()=>{ if(!inp.value.trim() && inp.dataset.prev)inp.value=inp.dataset.prev; };
+  const commit=()=>{
+    const name=inp.value.trim();
     const k=keys.find(k=>COURSES[k].name.toLowerCase()===name.toLowerCase());
-    if(k){promoteToLive();courseKey=k;loadCourse(k);pushMeta();inp.blur();}
+    if(k && k!==courseKey){promoteToLive();courseKey=k;loadCourse(k);pushMeta();inp.dataset.prev=COURSES[k].name;inp.blur();}
+    else if(k){inp.dataset.prev=COURSES[k].name;}
+  };
+  inp.onchange=commit;                 // fires when a datalist option is chosen
+  inp.oninput=()=>{                    // also commit if typed text matches exactly
+    const name=inp.value.trim();
+    if(keys.find(k=>COURSES[k].name.toLowerCase()===name.toLowerCase()))commit();
   };
 }
 document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};

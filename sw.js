@@ -1,7 +1,7 @@
 /* Service worker — auto-updating cache for SA Golf Scorecard
    Bump CACHE_VERSION (or APP_VERSION in index.html) whenever you deploy
    changes so clients pick them up automatically. */
-const CACHE_VERSION = "2.11.0";
+const CACHE_VERSION = "2.13.0";
 const CACHE_NAME = "golf-scorecard-" + CACHE_VERSION;
 
 // Files to pre-cache for offline use
@@ -10,6 +10,8 @@ const ASSETS = [
   "./index.html",
   "./scorecard.html",
   "./spend.html",
+  "./courses.html",
+  "./course-bg.jpg",
   "./config.js",
   "./golf-icon.png"
 ];
