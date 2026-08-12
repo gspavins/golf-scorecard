@@ -57,9 +57,12 @@
   .sheet{background:var(--card);width:100%;max-width:520px;max-height:82vh;border-radius:14px 14px 0 0;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,.3)}
   @media(min-width:560px){.modal{align-items:center}.sheet{border-radius:14px}}
   /* full-screen list mode (from Past rounds) */
-  .modal.full{background:var(--card);align-items:stretch}
-  .modal.full .sheet{max-width:none;max-height:none;width:100%;height:100%;border-radius:0;box-shadow:none}
-  .modal.full .gamelist{flex:1}
+  .modal.full{background:linear-gradient(180deg,rgba(30,38,39,.30),rgba(30,38,39,.55)),url("course-bg.jpg") center/cover fixed no-repeat;align-items:stretch}
+  .modal.full .sheet{max-width:none;max-height:none;width:100%;height:100%;border-radius:0;box-shadow:none;background:transparent;display:flex;flex-direction:column}
+  .modal.full .sheethead{background:rgba(30,38,39,.85);color:#fff;border-bottom:none}
+  .modal.full .sheethead .x{color:#fff}
+  .modal.full .gamelist{flex:1;overflow:auto;padding:10px}
+  .modal.full .grow{background:rgba(244,247,244,.94)}
   .modal.full .sheetfoot{display:none}
   .sheethead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--hair);font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--green-dk)}
   .sheethead .x{background:none;border:none;font-size:24px;line-height:1;color:var(--dim);cursor:pointer;padding:0 4px}
@@ -936,24 +939,29 @@ async function openGames(){
   gameList.querySelectorAll('.gdel').forEach(btn=>{
     btn.onclick=async e=>{
       e.stopPropagation();
+      e.preventDefault();
       const id=btn.dataset.del;
       if(!confirm('Delete this game permanently?'))return;
+      // local removal
       const ix=loadIndex();delete ix[id];saveIndex(ix);
       try{localStorage.removeItem('sc:'+id);}catch(e){}
-      if(sb){try{await sb.from('scores').delete().eq('game_id',id);}catch(err){dbg('delete err '+err.message);}}
       if(localStorage.getItem('lastGame')===id)localStorage.removeItem('lastGame');
       if(id===liveGameId)liveGameId=null;
-      // list-only Past Rounds view: just refresh the list, never reveal the hidden scorecard
-      if(listOnly){ openGames(); return; }
-      if(id===gameId){
-        // deleted the game we're currently on — start a clean game
-        const g="g"+Math.random().toString(36).slice(2,8);
-        liveGameId=g;
-        modal.hidden=true;
-        await switchGame(g);
-        return;
+      // DB removal — request the deleted rows back so we can confirm it worked
+      if(sb){
+        try{
+          const {data,error}=await sb.from('scores').delete().eq('game_id',id).select();
+          if(error)dbg('DB delete ERROR: '+error.message);
+          else dbg('DB delete OK: removed '+((data&&data.length)||0)+' rows for '+id);
+        }catch(err){dbg('DB delete EXCEPTION: '+err.message);}
       }
-      openGames();
+      // refresh: in list-only view just re-render; otherwise handle current-game case
+      if(listOnly){ await openGames(); return; }
+      if(id===gameId){
+        const g="g"+Math.random().toString(36).slice(2,8);
+        liveGameId=g; modal.hidden=true; await switchGame(g); return;
+      }
+      await openGames();
     };
   });
 }
