@@ -389,6 +389,7 @@ let gameId = getGameId();
 let gameDate = todayISO();      // yyyy-mm-dd
 let gameFinal = false;          // marked final (still editable)
 let sb = null, channel = null, online = false;
+let _coursesResolve; const coursesReady = new Promise(r=>{_coursesResolve=r;});
 
 function todayISO(){
   const d=new Date();
@@ -593,6 +594,7 @@ async function initSupabase(){
   if(badKey){
     dot.className='dotstat off';
     msg.innerHTML='Local only — Supabase key not set in config.js';
+    if(_coursesResolve){_coursesResolve();_coursesResolve=null;}
     return;
   }
   try{
@@ -620,6 +622,7 @@ async function initSupabase(){
     dbg('CONNECT FAILED: '+e.message);
     dot.className='dotstat off';
     msg.innerHTML='Not syncing — check Supabase key/policies (running local)';
+    if(_coursesResolve){_coursesResolve();_coursesResolve=null;}
   }
 }
 // Load the course catalogue from Supabase (falls back to built-in COURSES)
@@ -653,6 +656,7 @@ async function loadCoursesFromDB(){
       loadCourse(courseKey);
     }
   }catch(e){console.error('course load failed, using built-ins',e);}
+  finally{ if(_coursesResolve){_coursesResolve();_coursesResolve=null;} }
 }
 // fetch every row from a table in pages of 1000 (Supabase's default cap)
 async function fetchAllRows(table,cols){
@@ -889,6 +893,7 @@ async function openGames(){
   gameList.innerHTML='<div class="gempty">Loading…</div>';
   modal.hidden=false;
   document.getElementById('backToLive').hidden=(gameId===liveGameId);
+  await coursesReady;                 // ensure course names are available before rendering
   const games=await fetchGames();
   if(!games.length){gameList.innerHTML='<div class="gempty">No previous games yet.<br><span style="font-size:10px;color:#9a968c">'+escapeHtmlLite(lastFetchInfo)+'</span></div>';return;}
   gameList.innerHTML=games.map(g=>{
