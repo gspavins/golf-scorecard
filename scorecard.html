@@ -487,6 +487,7 @@ function nineHTML(from,to,label){
 }
 
 function editCell(el){
+  if(viewOnly)return;                 // read-only when viewing a course from the Courses list
   if(el.querySelector('input'))return;
   const who=el.dataset.who,h=+el.dataset.h,cur=scores[who][h];
   el.innerHTML=`<input type="number" inputmode="numeric" min="1" max="15" value="${cur==null?'':cur}">`;
@@ -611,8 +612,10 @@ async function initSupabase(){
     if(wantCourse&&COURSES[wantCourse]){
       courseKey=wantCourse;courseLocked=true;
       setCourseInput(courseKey);loadCourse(courseKey);applyCourseLock();
-      if(params.get('view')!=='1'){        // a real new game (not just viewing) — persist so it shows in Past rounds
-        await pushMeta();
+      if(params.get('view')==='1'){
+        viewOnly=true; applyViewOnly();     // read-only: just showing the course card
+      }else{
+        await pushMeta();                    // a real new game — persist so it shows in Past rounds
         indexGame();
       }
     }
@@ -807,6 +810,15 @@ function renderCourseOptions(filter){
     if(k!==courseKey){promoteToLive();courseKey=k;setCourseInput(k);loadCourse(k);pushMeta();}
   });
 }
+function applyViewOnly(){
+  if(!viewOnly)return;
+  // disable score entry, handicaps, date, and action buttons
+  ['hc-gav','hc-phil','gameDateInput','newGame','finalBtn','reset','gamesBtn'].forEach(id=>{
+    const el=document.getElementById(id); if(el){el.disabled=true;el.style.opacity='.55';el.style.cursor='default';}
+  });
+  const banner=document.getElementById('finalBanner');
+  if(banner){banner.hidden=false;banner.textContent='Read-only — viewing course scorecard';banner.style.background='#354042';}
+}
 function applyCourseLock(){
   const btn=document.getElementById('courseBtn');
   if(!btn)return;
@@ -846,6 +858,7 @@ document.getElementById('reset').onclick=async()=>{
 let liveGameId=gameId;   // the round considered "in progress"
 let reviewing=false;     // true when viewing a past game (not the live round)
 let courseLocked=false;  // true when course was chosen from the Courses list (not editable here)
+let viewOnly=false;      // true when viewing a course read-only (no score entry)
 let listOnly=false;      // true when the page is showing only the games list (from Past rounds)
 let metaWritten=false;   // whether we've written the meta row for the current game
 async function switchGame(id, review){
@@ -927,15 +940,17 @@ async function openGames(){
       if(!confirm('Delete this game permanently?'))return;
       const ix=loadIndex();delete ix[id];saveIndex(ix);
       try{localStorage.removeItem('sc:'+id);}catch(e){}
-      if(online&&sb){try{await sb.from('scores').delete().eq('game_id',id);}catch(e){}}
-      if(id===gameId||id===liveGameId){
-        // deleted the game we're on (or the live one) — start a clean game
+      if(sb){try{await sb.from('scores').delete().eq('game_id',id);}catch(err){dbg('delete err '+err.message);}}
+      if(localStorage.getItem('lastGame')===id)localStorage.removeItem('lastGame');
+      if(id===liveGameId)liveGameId=null;
+      // list-only Past Rounds view: just refresh the list, never reveal the hidden scorecard
+      if(listOnly){ openGames(); return; }
+      if(id===gameId){
+        // deleted the game we're currently on — start a clean game
         const g="g"+Math.random().toString(36).slice(2,8);
         liveGameId=g;
-        if(localStorage.getItem('lastGame')===id)localStorage.setItem('lastGame',g);
         modal.hidden=true;
         await switchGame(g);
-        if(online&&sb)await pushMeta();
         return;
       }
       openGames();
@@ -1023,6 +1038,7 @@ slides.addEventListener('scroll',()=>{setTab(Math.round(slides.scrollLeft/slides
 
 // ---------- finalise ----------
 function updateFinalUI(){
+  if(viewOnly)return;   // read-only mode manages the banner itself
   document.getElementById('finalBanner').hidden=!gameFinal;
   const b=document.getElementById('finalBtn');
   b.textContent=gameFinal?'Reopen':'Mark final';
