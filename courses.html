@@ -7,6 +7,8 @@
 <link rel="icon" type="image/png" href="golf-icon.png">
 <link rel="apple-touch-icon" href="golf-icon.png">
 <meta name="theme-color" content="#293234">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{--ink:#293234;--card:#f4f7f4;--line:#c3ccc3;--hair:#d3ddd3;--gun:#293234;--gun-dk:#1e2627;--pastel:#c5dac5;--pastel-soft:#dceadc;--pastel-deep:#7fa87f;--dim:#6f7a76}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -17,12 +19,17 @@
   header .back{font:inherit;font-size:20px;font-weight:700;color:var(--pastel);text-decoration:none;line-height:1}
   header h1{font-family:Georgia,serif;font-size:19px;flex:1}
   header .count{font-size:11px;color:var(--pastel);font-weight:700}
-  .searchbar{padding:10px 14px;background:var(--card);border-bottom:1px solid var(--hair);position:sticky;top:44px;z-index:4}
+  .tabs{display:flex;background:var(--gun-dk)}
+  .tabs button{flex:1;background:none;border:none;font:inherit;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--pastel-deep);padding:10px;cursor:pointer;border-bottom:2px solid transparent}
+  .tabs button.on{color:#fff;border-bottom-color:var(--pastel)}
+  .searchbar{padding:10px 14px;background:var(--card);border-bottom:1px solid var(--hair)}
   .searchbar input{width:100%;font:inherit;font-size:15px;border:1px solid var(--hair);border-radius:8px;padding:9px 11px;background:#fff;color:var(--ink)}
   .searchbar select{width:100%;margin-top:8px;font:inherit;font-size:14px;border:1px solid var(--hair);border-radius:8px;padding:9px 11px;background:#fff;color:var(--ink)}
   .list{flex:1;overflow:auto;padding:8px 10px 24px}
   .crow{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:11px 12px;margin-bottom:8px}
-  .crow .nm{font-weight:800;font-size:15px;color:var(--gun-dk);line-height:1.15}
+  .crow .top{display:flex;align-items:flex-start;gap:8px}
+  .crow .nm{font-weight:800;font-size:15px;color:var(--gun-dk);line-height:1.15;flex:1}
+  .crow .info{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:1px solid var(--pastel-deep);background:#fff;color:var(--pastel-deep);font-weight:800;font-size:14px;cursor:pointer;line-height:1}
   .crow .meta{font-size:11px;color:var(--dim);margin-top:2px}
   .crow .acts{display:flex;gap:7px;margin-top:9px}
   .crow .acts a{flex:1;text-align:center;text-decoration:none;font-size:12px;font-weight:700;padding:8px;border-radius:7px;letter-spacing:.02em}
@@ -30,6 +37,33 @@
   .crow .new{background:var(--gun);color:var(--pastel)}
   .empty{text-align:center;color:var(--dim);padding:40px 20px;font-size:14px}
   .loading{text-align:center;color:var(--dim);padding:40px;font-size:13px}
+  #map{flex:1;min-height:60vh;width:100%}
+  #mapPane{flex:1;display:none;flex-direction:column}
+  #mapPane.on{display:flex}
+  #listPane.off{display:none}
+  .leaflet-popup-content{font-family:inherit;font-size:13px}
+  .leaflet-popup-content b{color:var(--gun-dk)}
+  .leaflet-popup-content .pl{display:flex;gap:6px;margin-top:6px}
+  .leaflet-popup-content .pl a{flex:1;text-align:center;text-decoration:none;font-size:11px;font-weight:700;padding:6px;border-radius:6px}
+  .leaflet-popup-content .pl .v{background:var(--pastel-soft);color:var(--gun-dk)}
+  .leaflet-popup-content .pl .n{background:var(--gun);color:var(--pastel)}
+  /* info modal */
+  .modal{position:fixed;inset:0;background:rgba(20,25,22,.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
+  .modal[hidden]{display:none}
+  .sheet{background:var(--card);width:100%;max-width:420px;border-radius:14px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.35);max-height:86vh;display:flex;flex-direction:column}
+  .sheethead{display:flex;align-items:flex-start;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--hair)}
+  .sheethead .t{font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--gun-dk);line-height:1.15}
+  .sheethead .x{background:none;border:none;font-size:24px;color:var(--dim);cursor:pointer;line-height:1}
+  .sheetbody{padding:14px 16px;overflow:auto}
+  .sheetbody .row{margin-bottom:12px}
+  .sheetbody .lbl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--pastel-deep)}
+  .sheetbody .val{font-size:14px;margin-top:2px;line-height:1.4}
+  .sheetbody a{color:var(--gun-dk);font-weight:700;word-break:break-all}
+  .sheetbody .note{font-style:italic;color:#4a5250}
+  .sheetfoot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--hair)}
+  .sheetfoot a{flex:1;text-align:center;text-decoration:none;font:inherit;font-weight:700;font-size:13px;padding:10px;border-radius:8px}
+  .sheetfoot .map{background:var(--pastel-soft);color:var(--gun-dk);border:1px solid var(--hair)}
+  .sheetfoot .go{background:var(--gun);color:var(--pastel)}
 </style>
 </head>
 <body>
@@ -39,34 +73,59 @@
     <h1>Courses</h1>
     <span class="count" id="count"></span>
   </header>
+  <div class="tabs">
+    <button id="tabList" class="on">List</button>
+    <button id="tabMap">Map</button>
+  </div>
   <div class="searchbar">
     <input id="search" type="text" placeholder="Search courses…" autocomplete="off">
     <select id="province"><option value="">All provinces / regions</option></select>
   </div>
-  <div class="list" id="list"><div class="loading">Loading courses…</div></div>
+  <div class="list" id="listPane"><div class="loading">Loading courses…</div></div>
+  <div id="mapPane"><div id="map"></div></div>
+</div>
+
+<div class="modal" id="infoModal" hidden>
+  <div class="sheet">
+    <div class="sheethead"><span class="t" id="infoTitle"></span><button class="x" id="infoClose">&times;</button></div>
+    <div class="sheetbody" id="infoBody"></div>
+    <div class="sheetfoot" id="infoFoot"></div>
+  </div>
 </div>
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-let COURSES=[];  // {id,name,location,tee,par}
-const listEl=document.getElementById('list');
+let COURSES=[];  // {id,name,tee,par,region,area,website,note,lat,lng}
+const listEl=document.getElementById('listPane');
 const countEl=document.getElementById('count');
 const searchEl=document.getElementById('search');
 const provEl=document.getElementById('province');
+let map=null, markers=null, mapBuilt=false;
 
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function mapsUrl(c){
+  if(c.lat!=null&&c.lng!=null)return 'https://www.google.com/maps/search/?api=1&query='+c.lat+','+c.lng;
+  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(c.name+' golf course '+(c.area||c.region||''));
+}
 
-function render(){
+function filtered(){
   const q=searchEl.value.trim().toLowerCase();
   const prov=provEl.value;
-  const rows=COURSES.filter(c=>(!q||c.name.toLowerCase().includes(q))&&(!prov||c.region===prov));
+  return COURSES.filter(c=>(!q||c.name.toLowerCase().includes(q))&&(!prov||c.region===prov));
+}
+
+function render(){
+  const rows=filtered();
   countEl.textContent=rows.length+' / '+COURSES.length;
   if(!rows.length){listEl.innerHTML='<div class="empty">No courses match.</div>';return;}
-  listEl.innerHTML=rows.map(c=>{
+  listEl.innerHTML=rows.map((c,i)=>{
     const bits=[c.region||'',c.area||'',c.tee?esc(c.tee)+' tees':'','Par '+c.par].filter(Boolean).join(' · ');
     return `<div class="crow">
-      <div class="nm">${esc(c.name)}</div>
+      <div class="top">
+        <div class="nm">${esc(c.name)}</div>
+        <button class="info" data-i="${COURSES.indexOf(c)}" title="Info">i</button>
+      </div>
       <div class="meta">${esc(bits)}</div>
       <div class="acts">
         <a class="view" href="scorecard.html?course=${encodeURIComponent(c.id)}&view=1">View scorecard</a>
@@ -74,7 +133,62 @@ function render(){
       </div>
     </div>`;
   }).join('');
+  listEl.querySelectorAll('.info').forEach(b=>b.onclick=()=>showInfo(COURSES[+b.dataset.i]));
+  if(map)buildMarkers();
 }
+
+// ---- info modal ----
+const infoModal=document.getElementById('infoModal');
+function showInfo(c){
+  document.getElementById('infoTitle').textContent=c.name;
+  const rows=[];
+  const place=[c.area,c.region,c.country].filter(Boolean).join(', ');
+  if(place)rows.push(`<div class="row"><div class="lbl">Location</div><div class="val">${esc(place)}</div></div>`);
+  rows.push(`<div class="row"><div class="lbl">On the map</div><div class="val">${(c.lat!=null&&c.lng!=null)?('Pinned at '+(+c.lat).toFixed(4)+', '+(+c.lng).toFixed(4)):'No exact GPS on record — using a name search'}</div></div>`);
+  if(c.website)rows.push(`<div class="row"><div class="lbl">Website</div><div class="val"><a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website)}</a></div></div>`);
+  if(c.green_fee)rows.push(`<div class="row"><div class="lbl">Detail</div><div class="val">${esc(c.green_fee)}</div></div>`);
+  if(c.note)rows.push(`<div class="row"><div class="lbl">Note</div><div class="val note">${esc(c.note)}</div></div>`);
+  if(rows.length===0)rows.push('<div class="val" style="color:var(--dim)">No extra details on record for this course.</div>');
+  document.getElementById('infoBody').innerHTML=rows.join('');
+  document.getElementById('infoFoot').innerHTML=
+    `<a class="map" href="${mapsUrl(c)}" target="_blank" rel="noopener">Open in Maps</a>`+
+    `<a class="go" href="scorecard.html?new=1&course=${encodeURIComponent(c.id)}">New scorecard</a>`;
+  infoModal.hidden=false;
+}
+document.getElementById('infoClose').onclick=()=>infoModal.hidden=true;
+infoModal.onclick=e=>{if(e.target===infoModal)infoModal.hidden=true;};
+
+// ---- map ----
+function ensureMap(){
+  if(mapBuilt)return;
+  mapBuilt=true;
+  map=L.map('map',{scrollWheelZoom:true}).setView([-29.0,25.0],5);  // roughly centre on SA
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
+  markers=L.layerGroup().addTo(map);
+  buildMarkers();
+}
+function buildMarkers(){
+  if(!markers)return;
+  markers.clearLayers();
+  const rows=filtered().filter(c=>c.lat!=null&&c.lng!=null);
+  const pts=[];
+  rows.forEach(c=>{
+    const m=L.marker([+c.lat,+c.lng]);
+    const popup=`<b>${esc(c.name)}</b><br>${esc([c.area,c.region].filter(Boolean).join(', '))}`+
+      (c.website?`<br><a href="${esc(c.website)}" target="_blank" rel="noopener">Website</a>`:'')+
+      `<div class="pl"><a class="v" href="scorecard.html?course=${encodeURIComponent(c.id)}&view=1">View</a>`+
+      `<a class="n" href="scorecard.html?new=1&course=${encodeURIComponent(c.id)}">New</a></div>`;
+    m.bindPopup(popup);
+    markers.addLayer(m); pts.push([+c.lat,+c.lng]);
+  });
+  if(pts.length){map.fitBounds(pts,{padding:[30,30],maxZoom:11});}
+}
+
+// ---- tabs ----
+const tabList=document.getElementById('tabList'),tabMap=document.getElementById('tabMap');
+const mapPane=document.getElementById('mapPane');
+tabList.onclick=()=>{tabList.classList.add('on');tabMap.classList.remove('on');listEl.classList.remove('off');mapPane.classList.remove('on');};
+tabMap.onclick=()=>{tabMap.classList.add('on');tabList.classList.remove('on');listEl.classList.add('off');mapPane.classList.add('on');ensureMap();setTimeout(()=>map&&map.invalidateSize(),50);};
 
 async function load(){
   if(typeof SUPABASE_URL==='undefined'||!SUPABASE_URL||!window.supabase){
@@ -82,11 +196,10 @@ async function load(){
   }
   try{
     const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    const {data,error}=await sb.from('courses').select('id,name,location,tee,par,region,area').order('name',{ascending:true}).limit(2000);
+    const {data,error}=await sb.from('courses').select('id,name,tee,par,region,area,country,website,green_fee,note,lat,lng').order('name',{ascending:true}).limit(2000);
     if(error)throw error;
-    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,location:c.location||'',tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||''}));
+    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
-    // populate province filter from the regions present
     const regions=[...new Set(COURSES.map(c=>c.region).filter(Boolean))].sort();
     provEl.innerHTML='<option value="">All provinces / regions</option>'+regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
     render();
