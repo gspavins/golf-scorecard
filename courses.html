@@ -255,10 +255,32 @@ async function load(){
     if(error)throw error;
     COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
-    // which courses have been played (any round with a real score)?
+    // which courses have been played? A game is "played" if it has >=1 real score.
+    // The course lives on the __meta row; scores live on player rows — so join by game_id.
     try{
-      const sc=await sb.from('scores').select('course,player,strokes').neq('player','__meta').not('strokes','is',null).limit(10000);
-      (sc.data||[]).forEach(r=>{if(r.course)PLAYED.add(r.course);});
+      const sc=await sb.from('scores').select('game_id,course,player,strokes').limit(20000);
+      const rows=sc.data||[];
+      const courseByGame={};            // game_id -> course id (from meta)
+      const gamesWithScores=new Set();  // game_ids that have a real stroke
+      rows.forEach(r=>{
+        if(r.player==='__meta'){ if(r.course)courseByGame[r.game_id]=r.course; }
+        else if(r.strokes!=null){ gamesWithScores.add(r.game_id); }
+      });
+      // build a name map so an old built-in course id (e.g. 'kloof') still marks the DB course (c380)
+      const norm=s=>String(s||'').toLowerCase().replace(/\b(golf club|country club|golf course|golf estate|cc|gc|club|course|estate|the)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+      const byId={}, byName={};
+      COURSES.forEach(c=>{byId[c.id]=c; byName[norm(c.name)]=c;});
+      const BUILTIN_NAMES={kloof:'kloof country club',durbancc:'durban country club'}; // fallbacks for old ids
+      gamesWithScores.forEach(gid=>{
+        const cid=courseByGame[gid];
+        if(!cid)return;
+        let course=byId[cid];
+        if(!course){ // old id not in DB — try matching by its name
+          const nm=BUILTIN_NAMES[cid]||cid;
+          course=byName[norm(nm)];
+        }
+        if(course)PLAYED.add(course.id);
+      });
     }catch(e){console.error('played load',e);}
     // which courses are marked planned?
     try{
