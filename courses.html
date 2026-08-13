@@ -19,6 +19,7 @@
   header .count{font-size:11px;color:var(--pastel);font-weight:700}
   .searchbar{padding:10px 14px;background:var(--card);border-bottom:1px solid var(--hair);position:sticky;top:44px;z-index:4}
   .searchbar input{width:100%;font:inherit;font-size:15px;border:1px solid var(--hair);border-radius:8px;padding:9px 11px;background:#fff;color:var(--ink)}
+  .searchbar select{width:100%;margin-top:8px;font:inherit;font-size:14px;border:1px solid var(--hair);border-radius:8px;padding:9px 11px;background:#fff;color:var(--ink)}
   .list{flex:1;overflow:auto;padding:8px 10px 24px}
   .crow{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:11px 12px;margin-bottom:8px}
   .crow .nm{font-weight:800;font-size:15px;color:var(--gun-dk);line-height:1.15}
@@ -40,6 +41,7 @@
   </header>
   <div class="searchbar">
     <input id="search" type="text" placeholder="Search courses…" autocomplete="off">
+    <select id="province"><option value="">All provinces / regions</option></select>
   </div>
   <div class="list" id="list"><div class="loading">Loading courses…</div></div>
 </div>
@@ -51,19 +53,21 @@ let COURSES=[];  // {id,name,location,tee,par}
 const listEl=document.getElementById('list');
 const countEl=document.getElementById('count');
 const searchEl=document.getElementById('search');
+const provEl=document.getElementById('province');
 
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function render(){
   const q=searchEl.value.trim().toLowerCase();
-  const rows=COURSES.filter(c=>!q||c.name.toLowerCase().includes(q));
+  const prov=provEl.value;
+  const rows=COURSES.filter(c=>(!q||c.name.toLowerCase().includes(q))&&(!prov||c.region===prov));
   countEl.textContent=rows.length+' / '+COURSES.length;
-  if(!rows.length){listEl.innerHTML='<div class="empty">No courses match “'+esc(searchEl.value)+'”.</div>';return;}
+  if(!rows.length){listEl.innerHTML='<div class="empty">No courses match.</div>';return;}
   listEl.innerHTML=rows.map(c=>{
-    const bits=[c.tee?esc(c.tee)+' tees':'','Par '+c.par].filter(Boolean).join(' · ');
+    const bits=[c.region||'',c.area||'',c.tee?esc(c.tee)+' tees':'','Par '+c.par].filter(Boolean).join(' · ');
     return `<div class="crow">
       <div class="nm">${esc(c.name)}</div>
-      <div class="meta">${bits}</div>
+      <div class="meta">${esc(bits)}</div>
       <div class="acts">
         <a class="view" href="scorecard.html?course=${encodeURIComponent(c.id)}&view=1">View scorecard</a>
         <a class="new" href="scorecard.html?new=1&course=${encodeURIComponent(c.id)}">New scorecard</a>
@@ -78,14 +82,18 @@ async function load(){
   }
   try{
     const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-    const {data,error}=await sb.from('courses').select('id,name,location,tee,par').order('name',{ascending:true}).limit(2000);
+    const {data,error}=await sb.from('courses').select('id,name,location,tee,par,region,area').order('name',{ascending:true}).limit(2000);
     if(error)throw error;
-    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,location:c.location||'',tee:c.tee||'',par:c.par}));
+    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,location:c.location||'',tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||''}));
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
+    // populate province filter from the regions present
+    const regions=[...new Set(COURSES.map(c=>c.region).filter(Boolean))].sort();
+    provEl.innerHTML='<option value="">All provinces / regions</option>'+regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
     render();
   }catch(e){console.error(e);listEl.innerHTML='<div class="empty">Couldn’t load courses. '+esc(e.message||'')+'</div>';}
 }
 searchEl.addEventListener('input',render);
+provEl.addEventListener('change',render);
 load();
 </script>
 </body>
