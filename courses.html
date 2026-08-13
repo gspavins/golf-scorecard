@@ -31,6 +31,11 @@
   .crow .nm{font-weight:800;font-size:15px;color:var(--gun-dk);line-height:1.15;flex:1}
   .crow .info{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:1px solid var(--pastel-deep);background:#fff;color:var(--pastel-deep);font-weight:800;font-size:14px;cursor:pointer;line-height:1}
   .crow .meta{font-size:11px;color:var(--dim);margin-top:2px}
+  .badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:1px 7px;border-radius:20px;vertical-align:middle;margin-left:2px}
+  .badge.played{background:#e0f0e6;color:#1f9d55;border:1px solid #1f9d55}
+  .badge.planned{background:#f7e2e0;color:#d0342c;border:1px solid #d0342c}
+  .crow .plan{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:12px;font-weight:700;color:var(--gun-dk);cursor:pointer}
+  .crow .plan input{width:17px;height:17px;accent-color:#d0342c}
   .crow .acts{display:flex;gap:7px;margin-top:9px}
   .crow .acts a{flex:1;text-align:center;text-decoration:none;font-size:12px;font-weight:700;padding:8px;border-radius:7px;letter-spacing:.02em}
   .crow .view{background:var(--pastel-soft);color:var(--gun-dk);border:1px solid var(--hair)}
@@ -80,6 +85,11 @@
   <div class="searchbar">
     <input id="search" type="text" placeholder="Search courses…" autocomplete="off">
     <select id="province"><option value="">All provinces / regions</option></select>
+    <select id="statusFilter">
+      <option value="">All courses</option>
+      <option value="played">Played only</option>
+      <option value="planned">Planned only</option>
+    </select>
   </div>
   <div class="list" id="listPane"><div class="loading">Loading courses…</div></div>
   <div id="mapPane"><div id="map"></div></div>
@@ -97,10 +107,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 let COURSES=[];  // {id,name,tee,par,region,area,website,note,lat,lng}
+let PLAYED=new Set();    // course ids that have a round with scores
+let PLANNED=new Set();   // course ids marked "planned"
+let sbClient=null;
 const listEl=document.getElementById('listPane');
 const countEl=document.getElementById('count');
 const searchEl=document.getElementById('search');
 const provEl=document.getElementById('province');
+const statusEl=document.getElementById('statusFilter');
 let map=null, markers=null, mapBuilt=false;
 
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -108,11 +122,19 @@ function mapsUrl(c){
   if(c.lat!=null&&c.lng!=null)return 'https://www.google.com/maps/search/?api=1&query='+c.lat+','+c.lng;
   return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(c.name+' golf course '+(c.area||c.region||''));
 }
+function statusOf(c){ return PLAYED.has(c.id)?'played':(PLANNED.has(c.id)?'planned':''); }
 
 function filtered(){
   const q=searchEl.value.trim().toLowerCase();
   const prov=provEl.value;
-  return COURSES.filter(c=>(!q||c.name.toLowerCase().includes(q))&&(!prov||c.region===prov));
+  const st=statusEl.value;
+  return COURSES.filter(c=>{
+    if(q&&!c.name.toLowerCase().includes(q))return false;
+    if(prov&&c.region!==prov)return false;
+    if(st==='played'&&statusOf(c)!=='played')return false;
+    if(st==='planned'&&statusOf(c)!=='planned')return false;
+    return true;
+  });
 }
 
 function render(){
@@ -121,20 +143,39 @@ function render(){
   if(!rows.length){listEl.innerHTML='<div class="empty">No courses match.</div>';return;}
   listEl.innerHTML=rows.map((c,i)=>{
     const bits=[c.region||'',c.area||'',c.tee?esc(c.tee)+' tees':'','Par '+c.par].filter(Boolean).join(' · ');
+    const st=statusOf(c);
+    const badge=st==='played'?'<span class="badge played">Played</span>'
+              :st==='planned'?'<span class="badge planned">Planned</span>':'';
+    const idx=COURSES.indexOf(c);
+    const checked=PLANNED.has(c.id)?'checked':'';
+    const dis=st==='played'?'disabled title="Already played"':'';
     return `<div class="crow">
       <div class="top">
-        <div class="nm">${esc(c.name)}</div>
-        <button class="info" data-i="${COURSES.indexOf(c)}" title="Info">i</button>
+        <div class="nm">${esc(c.name)} ${badge}</div>
+        <button class="info" data-i="${idx}" title="Info">i</button>
       </div>
       <div class="meta">${esc(bits)}</div>
       <div class="acts">
         <a class="view" href="scorecard.html?course=${encodeURIComponent(c.id)}&view=1">View scorecard</a>
         <a class="new" href="scorecard.html?new=1&course=${encodeURIComponent(c.id)}">New scorecard</a>
       </div>
+      <label class="plan"><input type="checkbox" data-plan="${idx}" ${checked} ${dis}> Planned</label>
     </div>`;
   }).join('');
   listEl.querySelectorAll('.info').forEach(b=>b.onclick=()=>showInfo(COURSES[+b.dataset.i]));
+  listEl.querySelectorAll('input[data-plan]').forEach(cb=>cb.onchange=()=>togglePlanned(COURSES[+cb.dataset.plan],cb.checked));
   if(map)buildMarkers();
+}
+
+async function togglePlanned(c,on){
+  if(on)PLANNED.add(c.id); else PLANNED.delete(c.id);
+  if(map)buildMarkers();
+  // persist
+  try{
+    if(!sbClient)return;
+    if(on)await sbClient.from('planned').upsert({course_id:c.id,planned:true,updated_at:new Date().toISOString()},{onConflict:'course_id'});
+    else await sbClient.from('planned').delete().eq('course_id',c.id);
+  }catch(e){console.error('planned save failed',e);}
 }
 
 // ---- info modal ----
@@ -142,6 +183,9 @@ const infoModal=document.getElementById('infoModal');
 function showInfo(c){
   document.getElementById('infoTitle').textContent=c.name;
   const rows=[];
+  const st=statusOf(c);
+  if(st==='played')rows.push('<div class="row"><div class="lbl">Status</div><div class="val"><b style="color:#1f9d55">Played</b></div></div>');
+  else if(st==='planned')rows.push('<div class="row"><div class="lbl">Status</div><div class="val"><b style="color:#d0342c">Planned</b></div></div>');
   const place=[c.area,c.region,c.country].filter(Boolean).join(', ');
   if(place)rows.push(`<div class="row"><div class="lbl">Location</div><div class="val">${esc(place)}</div></div>`);
   rows.push(`<div class="row"><div class="lbl">On the map</div><div class="val">${(c.lat!=null&&c.lng!=null)?('Pinned at '+(+c.lat).toFixed(4)+', '+(+c.lng).toFixed(4)):'No exact GPS on record — using a name search'}</div></div>`);
@@ -167,14 +211,24 @@ function ensureMap(){
   markers=L.layerGroup().addTo(map);
   buildMarkers();
 }
+function pinIcon(color){
+  return L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
+    html:`<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>`});
+}
+const ICON_PLAYED=()=>pinIcon('#1f9d55');   // green
+const ICON_PLANNED=()=>pinIcon('#d0342c');  // red
+const ICON_DEFAULT=()=>pinIcon('#3b7dd8');  // blue
 function buildMarkers(){
   if(!markers)return;
   markers.clearLayers();
   const rows=filtered().filter(c=>c.lat!=null&&c.lng!=null);
   const pts=[];
   rows.forEach(c=>{
-    const m=L.marker([+c.lat,+c.lng]);
-    const popup=`<b>${esc(c.name)}</b><br>${esc([c.area,c.region].filter(Boolean).join(', '))}`+
+    const st=statusOf(c);
+    const icon=st==='played'?ICON_PLAYED():st==='planned'?ICON_PLANNED():ICON_DEFAULT();
+    const m=L.marker([+c.lat,+c.lng],{icon});
+    const stTxt=st==='played'?' · <b style="color:#1f9d55">Played</b>':st==='planned'?' · <b style="color:#d0342c">Planned</b>':'';
+    const popup=`<b>${esc(c.name)}</b>${stTxt}<br>${esc([c.area,c.region].filter(Boolean).join(', '))}`+
       (c.website?`<br><a href="${esc(c.website)}" target="_blank" rel="noopener">Website</a>`:'')+
       `<div class="pl"><a class="v" href="scorecard.html?course=${encodeURIComponent(c.id)}&view=1">View</a>`+
       `<a class="n" href="scorecard.html?new=1&course=${encodeURIComponent(c.id)}">New</a></div>`;
@@ -196,10 +250,21 @@ async function load(){
   }
   try{
     const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    sbClient=sb;
     const {data,error}=await sb.from('courses').select('id,name,tee,par,region,area,country,website,green_fee,note,lat,lng').order('name',{ascending:true}).limit(2000);
     if(error)throw error;
     COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
+    // which courses have been played (any round with a real score)?
+    try{
+      const sc=await sb.from('scores').select('course,player,strokes').neq('player','__meta').not('strokes','is',null).limit(10000);
+      (sc.data||[]).forEach(r=>{if(r.course)PLAYED.add(r.course);});
+    }catch(e){console.error('played load',e);}
+    // which courses are marked planned?
+    try{
+      const pl=await sb.from('planned').select('course_id,planned');
+      (pl.data||[]).forEach(r=>{if(r.planned)PLANNED.add(r.course_id);});
+    }catch(e){console.error('planned load (did you run planned.sql?)',e);}
     const regions=[...new Set(COURSES.map(c=>c.region).filter(Boolean))].sort();
     provEl.innerHTML='<option value="">All provinces / regions</option>'+regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
     render();
@@ -207,6 +272,7 @@ async function load(){
 }
 searchEl.addEventListener('input',render);
 provEl.addEventListener('change',render);
+statusEl.addEventListener('change',render);
 load();
 </script>
 </body>

@@ -190,3 +190,10 @@ re-run. Course ids are `c<ref>` (e.g. Kloof = `c380`).
 In the app, the course field is now a **searchable box** — start typing a course
 name and pick from the list. The app loads the catalogue from Supabase on startup
 and still falls back to the built-in courses when offline.
+
+## Planned / Played courses (v2.19)
+Run `planned.sql` once in Supabase to create the shared "planned" table.
+On the Courses page, tick "Planned" on any course to flag it (syncs between
+players). A course you've recorded a round on shows "Played" automatically.
+Map markers: green = played, red = planned, blue = neither. The status filter
+lets you show only played or only planned courses.
