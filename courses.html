@@ -33,6 +33,7 @@
   .crow .meta{font-size:11px;color:var(--dim);margin-top:2px}
   .badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:1px 7px;border-radius:20px;vertical-align:middle;margin-left:2px}
   .badge.played{background:#e0f0e6;color:#1f9d55;border:1px solid #1f9d55}
+  .badge.live{background:#fbf1cc;color:#a07d00;border:1px solid #e0b400}
   .badge.planned{background:#f7e2e0;color:#d0342c;border:1px solid #d0342c}
   .crow .plan{display:flex;align-items:center;gap:7px;margin-top:9px;font-size:12px;font-weight:700;color:var(--gun-dk);cursor:pointer}
   .crow .plan input{width:17px;height:17px;accent-color:#d0342c}
@@ -88,6 +89,7 @@
     <select id="statusFilter">
       <option value="">All courses</option>
       <option value="played">Played only</option>
+      <option value="live">Live only</option>
       <option value="planned">Planned only</option>
     </select>
   </div>
@@ -107,7 +109,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 let COURSES=[];  // {id,name,tee,par,region,area,website,note,lat,lng}
-let PLAYED=new Set();    // course ids that have a round with scores
+let PLAYED=new Set();    // course ids that have a FINAL round
+let LIVE=new Set();      // course ids with a round started but not final
 let PLANNED=new Set();   // course ids marked "planned"
 let sbClient=null;
 const listEl=document.getElementById('listPane');
@@ -122,7 +125,7 @@ function mapsUrl(c){
   if(c.lat!=null&&c.lng!=null)return 'https://www.google.com/maps/search/?api=1&query='+c.lat+','+c.lng;
   return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(c.name+' golf course '+(c.area||c.region||''));
 }
-function statusOf(c){ return PLAYED.has(c.id)?'played':(PLANNED.has(c.id)?'planned':''); }
+function statusOf(c){ return PLAYED.has(c.id)?'played':LIVE.has(c.id)?'live':(PLANNED.has(c.id)?'planned':''); }
 
 function filtered(){
   const q=searchEl.value.trim().toLowerCase();
@@ -132,6 +135,7 @@ function filtered(){
     if(q&&!c.name.toLowerCase().includes(q))return false;
     if(prov&&c.region!==prov)return false;
     if(st==='played'&&statusOf(c)!=='played')return false;
+    if(st==='live'&&statusOf(c)!=='live')return false;
     if(st==='planned'&&statusOf(c)!=='planned')return false;
     return true;
   });
@@ -145,10 +149,11 @@ function render(){
     const bits=[c.region||'',c.area||'',c.tee?esc(c.tee)+' tees':'','Par '+c.par].filter(Boolean).join(' · ');
     const st=statusOf(c);
     const badge=st==='played'?'<span class="badge played">Played</span>'
+              :st==='live'?'<span class="badge live">Live</span>'
               :st==='planned'?'<span class="badge planned">Planned</span>':'';
     const idx=COURSES.indexOf(c);
     const checked=PLANNED.has(c.id)?'checked':'';
-    const dis=st==='played'?'disabled title="Already played"':'';
+    const dis=(st==='played'||st==='live')?'disabled title="Round in progress or completed"':'';
     return `<div class="crow">
       <div class="top">
         <div class="nm">${esc(c.name)} ${badge}</div>
@@ -185,6 +190,7 @@ function showInfo(c){
   const rows=[];
   const st=statusOf(c);
   if(st==='played')rows.push('<div class="row"><div class="lbl">Status</div><div class="val"><b style="color:#1f9d55">Played</b></div></div>');
+  else if(st==='live')rows.push('<div class="row"><div class="lbl">Status</div><div class="val"><b style="color:#c79a00">Live — round in progress</b></div></div>');
   else if(st==='planned')rows.push('<div class="row"><div class="lbl">Status</div><div class="val"><b style="color:#d0342c">Planned</b></div></div>');
   const place=[c.area,c.region,c.country].filter(Boolean).join(', ');
   if(place)rows.push(`<div class="row"><div class="lbl">Location</div><div class="val">${esc(place)}</div></div>`);
@@ -211,23 +217,30 @@ function ensureMap(){
   markers=L.layerGroup().addTo(map);
   buildMarkers();
 }
-function pinIcon(color){
-  return L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
-    html:`<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>`});
+// golf flag-in-hole marker: a flagstick with a coloured pennant standing in a green cup
+function golfIcon(color){
+  const svg=`
+  <svg width="30" height="36" viewBox="0 0 30 36" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="15" cy="32" rx="10" ry="3.4" fill="#000" opacity="0.22"/>
+    <ellipse cx="15" cy="31" rx="8.5" ry="2.8" fill="#2f7d4f" stroke="#1e5e39" stroke-width="1"/>
+    <rect x="14" y="4" width="2.4" height="27" rx="1.2" fill="#3a3a3a"/>
+    <path d="M16.4 4 L28 8.5 L16.4 13 Z" fill="${color}" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>
+    <circle cx="15.2" cy="4" r="2" fill="#3a3a3a"/>
+  </svg>`;
+  return L.divIcon({className:'golfpin',iconSize:[30,36],iconAnchor:[15,32],popupAnchor:[0,-30],html:svg});
 }
-const ICON_PLAYED=()=>pinIcon('#1f9d55');   // green
-const ICON_PLANNED=()=>pinIcon('#d0342c');  // red
-const ICON_DEFAULT=()=>pinIcon('#3b7dd8');  // blue
+const COLORS={played:'#1f9d55',live:'#f4c020',planned:'#d0342c',other:'#3b7dd8'};
 function buildMarkers(){
   if(!markers)return;
   markers.clearLayers();
   const rows=filtered().filter(c=>c.lat!=null&&c.lng!=null);
   const pts=[];
   rows.forEach(c=>{
-    const st=statusOf(c);
-    const icon=st==='played'?ICON_PLAYED():st==='planned'?ICON_PLANNED():ICON_DEFAULT();
+    const st=statusOf(c)||'other';
+    const icon=golfIcon(COLORS[st]);
     const m=L.marker([+c.lat,+c.lng],{icon});
-    const stTxt=st==='played'?' · <b style="color:#1f9d55">Played</b>':st==='planned'?' · <b style="color:#d0342c">Planned</b>':'';
+    const label={played:'Played',live:'Live',planned:'Planned'}[st];
+    const stTxt=label?` · <b style="color:${COLORS[st]}">${label}</b>`:'';
     const popup=`<b>${esc(c.name)}</b>${stTxt}<br>${esc([c.area,c.region].filter(Boolean).join(', '))}`+
       (c.website?`<br><a href="${esc(c.website)}" target="_blank" rel="noopener">Website</a>`:'')+
       `<div class="pl"><a class="v" href="scorecard.html?course=${encodeURIComponent(c.id)}&view=1">View</a>`+
@@ -255,33 +268,26 @@ async function load(){
     if(error)throw error;
     COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
-    // which courses have been played? A game is "played" if it has >=1 real score.
-    // The course lives on the __meta row; scores live on player rows — so join by game_id.
+    // Classify each course: PLAYED (has a final round) or LIVE (round started, not final).
+    // Course lives on the __meta row; scores/final live there too; scores on player rows.
     try{
-      const sc=await sb.from('scores').select('game_id,course,player,strokes').limit(20000);
+      const sc=await sb.from('scores').select('game_id,course,player,strokes,final').limit(20000);
       const rows=sc.data||[];
-      const courseByGame={};            // game_id -> course id (from meta)
-      const gamesWithScores=new Set();  // game_ids that have a real stroke
+      const courseByGame={}, finalByGame={}, gamesWithScores=new Set();
       rows.forEach(r=>{
-        if(r.player==='__meta'){ if(r.course)courseByGame[r.game_id]=r.course; }
+        if(r.player==='__meta'){ if(r.course)courseByGame[r.game_id]=r.course; finalByGame[r.game_id]=!!r.final; }
         else if(r.strokes!=null){ gamesWithScores.add(r.game_id); }
       });
-      // build a name map so an old built-in course id (e.g. 'kloof') still marks the DB course (c380)
       const norm=s=>String(s||'').toLowerCase().replace(/\b(golf club|country club|golf course|golf estate|cc|gc|club|course|estate|the)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
       const byId={}, byName={};
       COURSES.forEach(c=>{byId[c.id]=c; byName[norm(c.name)]=c;});
-      const BUILTIN_NAMES={kloof:'kloof country club',durbancc:'durban country club'}; // fallbacks for old ids
+      const BUILTIN_NAMES={kloof:'kloof country club',durbancc:'durban country club'};
+      const resolve=cid=>{ let c=byId[cid]; if(!c){const nm=BUILTIN_NAMES[cid]||cid; c=byName[norm(nm)];} return c; };
       gamesWithScores.forEach(gid=>{
-        const cid=courseByGame[gid];
-        if(!cid)return;
-        let course=byId[cid];
-        if(!course){ // old id not in DB — try matching by its name
-          const nm=BUILTIN_NAMES[cid]||cid;
-          course=byName[norm(nm)];
-        }
-        if(course)PLAYED.add(course.id);
+        const c=resolve(courseByGame[gid]); if(!c)return;
+        if(finalByGame[gid])PLAYED.add(c.id); else LIVE.add(c.id);
       });
-    }catch(e){console.error('played load',e);}
+    }catch(e){console.error('played/live load',e);}
     // which courses are marked planned?
     try{
       const pl=await sb.from('planned').select('course_id,planned');
