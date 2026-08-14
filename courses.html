@@ -217,17 +217,30 @@ function ensureMap(){
   markers=L.layerGroup().addTo(map);
   buildMarkers();
 }
-// golf flag-in-hole marker: a flagstick with a coloured pennant standing in a green cup
+// golf ball marker: a dimpled ball tinted by status, with a soft shadow beneath
 function golfIcon(color){
   const svg=`
-  <svg width="30" height="36" viewBox="0 0 30 36" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="15" cy="32" rx="10" ry="3.4" fill="#000" opacity="0.22"/>
-    <ellipse cx="15" cy="31" rx="8.5" ry="2.8" fill="#2f7d4f" stroke="#1e5e39" stroke-width="1"/>
-    <rect x="14" y="4" width="2.4" height="27" rx="1.2" fill="#3a3a3a"/>
-    <path d="M16.4 4 L28 8.5 L16.4 13 Z" fill="${color}" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>
-    <circle cx="15.2" cy="4" r="2" fill="#3a3a3a"/>
+  <svg width="30" height="34" viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="g" cx="38%" cy="34%" r="70%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="62%" stop-color="${color}"/>
+        <stop offset="100%" stop-color="${color}"/>
+      </radialGradient>
+    </defs>
+    <ellipse cx="15" cy="31" rx="7" ry="2.2" fill="#000" opacity="0.22"/>
+    <circle cx="15" cy="13" r="12" fill="url(#g)" stroke="#ffffff" stroke-width="2"/>
+    <g fill="#000" opacity="0.14">
+      <circle cx="15" cy="7" r="1.3"/>
+      <circle cx="10.5" cy="9.5" r="1.3"/><circle cx="19.5" cy="9.5" r="1.3"/>
+      <circle cx="15" cy="12" r="1.3"/>
+      <circle cx="10.5" cy="14.5" r="1.3"/><circle cx="19.5" cy="14.5" r="1.3"/>
+      <circle cx="15" cy="17" r="1.3"/>
+      <circle cx="12" cy="19.5" r="1.1"/><circle cx="18" cy="19.5" r="1.1"/>
+    </g>
+    <ellipse cx="11" cy="8" rx="3" ry="2" fill="#fff" opacity="0.45"/>
   </svg>`;
-  return L.divIcon({className:'golfpin',iconSize:[30,36],iconAnchor:[15,32],popupAnchor:[0,-30],html:svg});
+  return L.divIcon({className:'golfpin',iconSize:[30,34],iconAnchor:[15,25],popupAnchor:[0,-24],html:svg});
 }
 const COLORS={played:'#1f9d55',live:'#f4c020',planned:'#d0342c',other:'#3b7dd8'};
 function buildMarkers(){
