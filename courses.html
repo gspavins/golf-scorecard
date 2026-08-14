@@ -283,13 +283,16 @@ async function load(){
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
     // Classify each course: PLAYED (has a final round) or LIVE (round started, not final).
     // Course lives on the __meta row; scores/final live there too; scores on player rows.
+    let _diag={rows:0,meta:0,scored:0,err:''};
     try{
       const sc=await sb.from('scores').select('game_id,course,player,strokes,final').limit(20000);
+      if(sc.error)_diag.err=sc.error.message;
       const rows=sc.data||[];
+      _diag.rows=rows.length;
       const courseByGame={}, finalByGame={}, gamesWithScores=new Set();
       rows.forEach(r=>{
-        if(r.player==='__meta'){ if(r.course)courseByGame[r.game_id]=r.course; finalByGame[r.game_id]=!!r.final; }
-        else if(r.strokes!=null){ gamesWithScores.add(r.game_id); }
+        if(r.player==='__meta'){ if(r.course)courseByGame[r.game_id]=r.course; finalByGame[r.game_id]=!!r.final; _diag.meta++; }
+        else if(r.strokes!=null){ gamesWithScores.add(r.game_id); _diag.scored++; }
       });
       const norm=s=>String(s||'').toLowerCase().replace(/\b(golf club|country club|golf course|golf estate|cc|gc|club|course|estate|the)\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
       const byId={}, byName={};
@@ -300,12 +303,21 @@ async function load(){
         const c=resolve(courseByGame[gid]); if(!c)return;
         if(finalByGame[gid])PLAYED.add(c.id); else LIVE.add(c.id);
       });
-    }catch(e){console.error('played/live load',e);}
+    }catch(e){console.error('played/live load',e);_diag.err=String(e.message||e);}
     // which courses are marked planned?
     try{
       const pl=await sb.from('planned').select('course_id,planned');
+      if(pl.error)_diag.err+=' | planned: '+pl.error.message;
       (pl.data||[]).forEach(r=>{if(r.planned)PLANNED.add(r.course_id);});
-    }catch(e){console.error('planned load (did you run planned.sql?)',e);}
+    }catch(e){console.error('planned load (did you run planned.sql?)',e);_diag.err+=' | planned: '+String(e.message||e);}
+    // show a small diagnostic line under the header (tap to dismiss)
+    try{
+      const d=document.createElement('div');
+      d.style.cssText='font-size:10px;color:#6f7a76;padding:4px 14px;background:#eef3ee;cursor:pointer';
+      d.textContent=`status: ${_diag.rows} score rows · ${_diag.meta} meta · played ${PLAYED.size} · live ${LIVE.size} · planned ${PLANNED.size}`+(_diag.err?(' · ERR: '+_diag.err):'');
+      d.onclick=()=>d.remove();
+      document.querySelector('.searchbar').after(d);
+    }catch(e){}
     const regions=[...new Set(COURSES.map(c=>c.region).filter(Boolean))].sort();
     provEl.innerHTML='<option value="">All provinces / regions</option>'+regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
     render();
