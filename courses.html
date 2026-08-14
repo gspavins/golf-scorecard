@@ -312,9 +312,12 @@ async function load(){
     }catch(e){console.error('planned load (did you run planned.sql?)',e);_diag.err+=' | planned: '+String(e.message||e);}
     // show a small diagnostic line under the header (tap to dismiss)
     try{
+      const withGps=c=>c&&c.lat!=null&&c.lng!=null;
+      const statusCourses=COURSES.filter(c=>statusOf(c));
+      const statusOnMap=statusCourses.filter(withGps).length;
       const d=document.createElement('div');
       d.style.cssText='font-size:10px;color:#6f7a76;padding:4px 14px;background:#eef3ee;cursor:pointer';
-      d.textContent=`status: ${_diag.rows} score rows · ${_diag.meta} meta · played ${PLAYED.size} · live ${LIVE.size} · planned ${PLANNED.size}`+(_diag.err?(' · ERR: '+_diag.err):'');
+      d.textContent=`status: ${_diag.rows} rows · played ${PLAYED.size} · live ${LIVE.size} · planned ${PLANNED.size} · of ${statusCourses.length} status-courses ${statusOnMap} have GPS`+(_diag.err?(' · ERR: '+_diag.err):'');
       d.onclick=()=>d.remove();
       document.querySelector('.searchbar').after(d);
     }catch(e){}
