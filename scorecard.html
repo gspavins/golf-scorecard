@@ -318,6 +318,7 @@
     <button class="primary" id="newGame">New game</button>
     <button id="gamesBtn">Games</button>
     <button id="finalBtn">Mark final</button>
+    <button id="shareBtn" hidden>Share</button>
     <button id="reset">Clear scores</button>
     <button id="menuBtn">Menu</button>
   </div>
@@ -1051,10 +1052,79 @@ function updateFinalUI(){
   const b=document.getElementById('finalBtn');
   b.textContent=gameFinal?'Reopen':'Mark final';
   b.classList.toggle('primary',!gameFinal);
+  const share=document.getElementById('shareBtn');
+  if(share)share.hidden=!gameFinal;   // share only a finished round
 }
 document.getElementById('finalBtn').onclick=()=>{
   gameFinal=!gameFinal; updateFinalUI(); persistLocal(); pushMeta(); indexGame();
 };
+
+// ---- share a finished round as an image ----
+document.getElementById('shareBtn').onclick=async()=>{
+  try{
+    const canvas=buildShareCard();
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
+    const file=new File([blob],'gav-v-phil.png',{type:'image/png'});
+    const gG=psum('gav',1,18),pG=psum('phil',1,18);
+    const cn=COURSES[courseKey]?COURSES[courseKey].name:'our round';
+    const txt=`Gav ${gG} · Phil ${pG} at ${cn}`;
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],text:txt});
+    }else{
+      // fallback: download the image
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gav-v-phil.png';a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    }
+  }catch(e){dbg('share failed: '+e.message);}
+};
+
+function buildShareCard(){
+  const W=1080,H=1080,c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  // background
+  x.fillStyle='#293234';x.fillRect(0,0,W,H);
+  x.fillStyle='#1e2627';x.fillRect(0,0,W,150);
+  // title
+  x.fillStyle='#ffffff';x.textAlign='center';x.font='bold 64px Georgia,serif';
+  x.fillText('GAV v PHIL',W/2,98);
+  const cn=COURSES[courseKey]?COURSES[courseKey].name:'';
+  x.fillStyle='#c5dac5';x.font='600 30px Arial';
+  x.fillText(cn+(gameDate?('  ·  '+fmtDate(gameDate)):''),W/2,190);
+  // totals
+  const gG=psum('gav',1,18),pG=psum('phil',1,18);
+  const gP=stablefordTotal('gav',1,18),pP=stablefordTotal('phil',1,18);
+  const winner=gG<pG?'Gav':pG<gG?'Phil':'Halved';
+  // two big score blocks
+  function block(cx,name,gross,pts,win){
+    x.fillStyle=win?'#c5dac5':'#3a4547';x.beginPath();
+    if(x.roundRect)x.roundRect(cx-210,270,420,300,24);else x.rect(cx-210,270,420,300);
+    x.fill();
+    x.fillStyle=win?'#1e2627':'#ffffff';x.font='bold 44px Georgia,serif';x.fillText(name,cx,340);
+    x.font='bold 150px Arial';x.fillText(gross,cx,480);
+    x.fillStyle=win?'#3a4547':'#c5dac5';x.font='600 30px Arial';x.fillText(pts+' pts',cx,540);
+  }
+  block(W/2-235,'Gav',String(gG),String(gP),winner==='Gav');
+  block(W/2+235,'Phil',String(pG),String(pP),winner==='Phil');
+  // result banner
+  x.fillStyle='#c5dac5';x.font='bold 52px Georgia,serif';
+  const rtxt=winner==='Halved'?'All square':`${winner} wins by ${Math.abs(gG-pG)}`;
+  x.fillText(rtxt,W/2,680);
+  // hole-by-hole mini row
+  x.font='600 22px Arial';x.fillStyle='#8fa39a';x.fillText('HOLE-BY-HOLE',W/2,760);
+  const startY=800,cellW=W/20;
+  x.textAlign='center';
+  for(let h=1;h<=18;h++){
+    const cx=cellW*(h)+cellW*0.5;
+    const a=shownScore('gav',HOLES[h-1]),b=shownScore('phil',HOLES[h-1]);
+    x.fillStyle='#6f7a76';x.font='600 18px Arial';x.fillText(String(h),cx,startY);
+    x.fillStyle='#ffffff';x.font='bold 26px Arial';x.fillText(a!=null?a:'–',cx,startY+40);
+    x.fillStyle='#c5dac5';x.fillText(b!=null?b:'–',cx,startY+78);
+  }
+  // footer
+  x.fillStyle='#6f7a76';x.font='600 24px Arial';x.textAlign='center';
+  x.fillText('golfscor.netlify.app',W/2,H-40);
+  return c;
+}
 
 // ---------- menu nav ----------
 document.getElementById('menuBtn').onclick=()=>{location.href='index.html';};
