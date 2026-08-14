@@ -358,6 +358,7 @@
   </div>
 </div>
 <script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1059,11 +1060,38 @@ document.getElementById('finalBtn').onclick=()=>{
   gameFinal=!gameFinal; updateFinalUI(); persistLocal(); pushMeta(); indexGame();
 };
 
-// ---- share a finished round as an image ----
+// ---- share a finished round: summary card + a shot of the scorecard grid ----
 document.getElementById('shareBtn').onclick=async()=>{
+  const btn=document.getElementById('shareBtn');
+  const orig=btn.textContent; btn.textContent='Preparing…'; btn.disabled=true;
   try{
-    const canvas=buildShareCard();
-    const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
+    const summary=buildShareCard();                 // 1080-wide summary
+    // capture the actual scorecard grid (both nines + status)
+    let gridImg=null;
+    if(window.html2canvas){
+      const target=document.getElementById('slide-card');
+      const snap=await html2canvas(target,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false});
+      gridImg=snap;
+    }
+    // compose: summary on top, scorecard grid below, on one canvas
+    const W=1080;
+    const gridScaled = gridImg ? (W-60)/gridImg.width : 0;   // 30px margin each side
+    const gridH = gridImg ? Math.round(gridImg.height*gridScaled) : 0;
+    const gap = gridImg ? 30 : 0;
+    const out=document.createElement('canvas');
+    out.width=W; out.height=summary.height + gap + gridH + (gridImg?30:0);
+    const x=out.getContext('2d');
+    x.fillStyle='#293234'; x.fillRect(0,0,out.width,out.height);
+    x.drawImage(summary,0,0);
+    if(gridImg){
+      // white rounded panel behind the grid
+      const gy=summary.height+gap, gw=W-60;
+      x.fillStyle='#ffffff';
+      if(x.roundRect){x.beginPath();x.roundRect(30,gy,gw,gridH,18);x.fill();}
+      else x.fillRect(30,gy,gw,gridH);
+      x.drawImage(gridImg,30,gy,gw,gridH);
+    }
+    const blob=await new Promise(res=>out.toBlob(res,'image/png'));
     const file=new File([blob],'gav-v-phil.png',{type:'image/png'});
     const gG=psum('gav',1,18),pG=psum('phil',1,18);
     const cn=COURSES[courseKey]?COURSES[courseKey].name:'our round';
@@ -1071,58 +1099,38 @@ document.getElementById('shareBtn').onclick=async()=>{
     if(navigator.canShare&&navigator.canShare({files:[file]})){
       await navigator.share({files:[file],text:txt});
     }else{
-      // fallback: download the image
       const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gav-v-phil.png';a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href),4000);
     }
-  }catch(e){dbg('share failed: '+e.message);}
+  }catch(e){dbg('share failed: '+e.message);alert('Could not build the share image.');}
+  finally{btn.textContent=orig;btn.disabled=false;}
 };
 
 function buildShareCard(){
-  const W=1080,H=1080,c=document.createElement('canvas');c.width=W;c.height=H;
+  const W=1080,H=720,c=document.createElement('canvas');c.width=W;c.height=H;
   const x=c.getContext('2d');
-  // background
   x.fillStyle='#293234';x.fillRect(0,0,W,H);
   x.fillStyle='#1e2627';x.fillRect(0,0,W,150);
-  // title
   x.fillStyle='#ffffff';x.textAlign='center';x.font='bold 64px Georgia,serif';
   x.fillText('GAV v PHIL',W/2,98);
   const cn=COURSES[courseKey]?COURSES[courseKey].name:'';
   x.fillStyle='#c5dac5';x.font='600 30px Arial';
   x.fillText(cn+(gameDate?('  ·  '+fmtDate(gameDate)):''),W/2,190);
-  // totals
   const gG=psum('gav',1,18),pG=psum('phil',1,18);
   const gP=stablefordTotal('gav',1,18),pP=stablefordTotal('phil',1,18);
   const winner=gG<pG?'Gav':pG<gG?'Phil':'Halved';
-  // two big score blocks
   function block(cx,name,gross,pts,win){
-    x.fillStyle=win?'#c5dac5':'#3a4547';x.beginPath();
-    if(x.roundRect)x.roundRect(cx-210,270,420,300,24);else x.rect(cx-210,270,420,300);
-    x.fill();
-    x.fillStyle=win?'#1e2627':'#ffffff';x.font='bold 44px Georgia,serif';x.fillText(name,cx,340);
-    x.font='bold 150px Arial';x.fillText(gross,cx,480);
-    x.fillStyle=win?'#3a4547':'#c5dac5';x.font='600 30px Arial';x.fillText(pts+' pts',cx,540);
+    x.fillStyle=win?'#c5dac5':'#3a4547';
+    if(x.roundRect){x.beginPath();x.roundRect(cx-210,250,420,300,24);x.fill();}else x.fillRect(cx-210,250,420,300);
+    x.fillStyle=win?'#1e2627':'#ffffff';x.textAlign='center';x.font='bold 44px Georgia,serif';x.fillText(name,cx,320);
+    x.font='bold 150px Arial';x.fillText(gross,cx,460);
+    x.fillStyle=win?'#3a4547':'#c5dac5';x.font='600 30px Arial';x.fillText(pts+' pts',cx,520);
   }
   block(W/2-235,'Gav',String(gG),String(gP),winner==='Gav');
   block(W/2+235,'Phil',String(pG),String(pP),winner==='Phil');
-  // result banner
-  x.fillStyle='#c5dac5';x.font='bold 52px Georgia,serif';
+  x.fillStyle='#c5dac5';x.font='bold 52px Georgia,serif';x.textAlign='center';
   const rtxt=winner==='Halved'?'All square':`${winner} wins by ${Math.abs(gG-pG)}`;
-  x.fillText(rtxt,W/2,680);
-  // hole-by-hole mini row
-  x.font='600 22px Arial';x.fillStyle='#8fa39a';x.fillText('HOLE-BY-HOLE',W/2,760);
-  const startY=800,cellW=W/20;
-  x.textAlign='center';
-  for(let h=1;h<=18;h++){
-    const cx=cellW*(h)+cellW*0.5;
-    const a=shownScore('gav',HOLES[h-1]),b=shownScore('phil',HOLES[h-1]);
-    x.fillStyle='#6f7a76';x.font='600 18px Arial';x.fillText(String(h),cx,startY);
-    x.fillStyle='#ffffff';x.font='bold 26px Arial';x.fillText(a!=null?a:'–',cx,startY+40);
-    x.fillStyle='#c5dac5';x.fillText(b!=null?b:'–',cx,startY+78);
-  }
-  // footer
-  x.fillStyle='#6f7a76';x.font='600 24px Arial';x.textAlign='center';
-  x.fillText('golfscor.netlify.app',W/2,H-40);
+  x.fillText(rtxt,W/2,650);
   return c;
 }
 
