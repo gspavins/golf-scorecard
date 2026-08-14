@@ -196,6 +196,8 @@ function showInfo(c){
   if(place)rows.push(`<div class="row"><div class="lbl">Location</div><div class="val">${esc(place)}</div></div>`);
   rows.push(`<div class="row"><div class="lbl">On the map</div><div class="val">${(c.lat!=null&&c.lng!=null)?('Pinned at '+(+c.lat).toFixed(4)+', '+(+c.lng).toFixed(4)):'No exact GPS on record — using a name search'}</div></div>`);
   if(c.website)rows.push(`<div class="row"><div class="lbl">Website</div><div class="val"><a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website)}</a></div></div>`);
+  if(c.phone)rows.push(`<div class="row"><div class="lbl">Phone</div><div class="val"><a href="tel:${esc(c.phone.replace(/[^0-9+]/g,''))}">${esc(c.phone)}</a></div></div>`);
+  if(c.email)rows.push(`<div class="row"><div class="lbl">Email</div><div class="val"><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></div></div>`);
   if(c.green_fee)rows.push(`<div class="row"><div class="lbl">Detail</div><div class="val">${esc(c.green_fee)}</div></div>`);
   if(c.note)rows.push(`<div class="row"><div class="lbl">Note</div><div class="val note">${esc(c.note)}</div></div>`);
   if(rows.length===0)rows.push('<div class="val" style="color:var(--dim)">No extra details on record for this course.</div>');
@@ -217,10 +219,8 @@ function ensureMap(){
   markers=L.layerGroup().addTo(map);
   buildMarkers();
 }
-// golf ball marker: a dimpled ball tinted by status, with a soft shadow beneath
+// golf ball marker: dimpled ball tinted by status, thin black outline
 function golfIcon(color){
-  // unique gradient id per colour — SVG ids must be unique in the document,
-  // otherwise every marker reuses the first gradient and shows the same colour.
   const gid='ball-'+color.replace('#','');
   const svg=`
   <svg width="30" height="34" viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">
@@ -232,7 +232,7 @@ function golfIcon(color){
       </radialGradient>
     </defs>
     <ellipse cx="15" cy="31" rx="7" ry="2.2" fill="#000" opacity="0.22"/>
-    <circle cx="15" cy="13" r="12" fill="url(#${gid})" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="15" cy="13" r="12" fill="url(#${gid})" stroke="#222" stroke-width="1.4"/>
     <g fill="#000" opacity="0.14">
       <circle cx="15" cy="7" r="1.3"/>
       <circle cx="10.5" cy="9.5" r="1.3"/><circle cx="19.5" cy="9.5" r="1.3"/>
@@ -245,7 +245,7 @@ function golfIcon(color){
   </svg>`;
   return L.divIcon({className:'golfpin',iconSize:[30,34],iconAnchor:[15,25],popupAnchor:[0,-24],html:svg});
 }
-const COLORS={played:'#1f9d55',live:'#f4c020',planned:'#d0342c',other:'#3b7dd8'};
+const COLORS={played:'#1f9d55',live:'#f4c020',planned:'#d0342c',other:'#ffffff'};
 function buildMarkers(){
   if(!markers)return;
   markers.clearLayers();
@@ -255,13 +255,7 @@ function buildMarkers(){
     const st=statusOf(c)||'other';
     const icon=golfIcon(COLORS[st]);
     const m=L.marker([+c.lat,+c.lng],{icon});
-    const label={played:'Played',live:'Live',planned:'Planned'}[st];
-    const stTxt=label?` · <b style="color:${COLORS[st]}">${label}</b>`:'';
-    const popup=`<b>${esc(c.name)}</b>${stTxt}<br>${esc([c.area,c.region].filter(Boolean).join(', '))}`+
-      (c.website?`<br><a href="${esc(c.website)}" target="_blank" rel="noopener">Website</a>`:'')+
-      `<div class="pl"><a class="v" href="scorecard.html?course=${encodeURIComponent(c.id)}&view=1">View</a>`+
-      `<a class="n" href="scorecard.html?new=1&course=${encodeURIComponent(c.id)}">New</a></div>`;
-    m.bindPopup(popup);
+    m.on('click',()=>showInfo(c));   // open the same detail card as the List tab
     markers.addLayer(m); pts.push([+c.lat,+c.lng]);
   });
   if(pts.length){map.fitBounds(pts,{padding:[30,30],maxZoom:11});}
@@ -280,9 +274,9 @@ async function load(){
   try{
     const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     sbClient=sb;
-    const {data,error}=await sb.from('courses').select('id,name,tee,par,region,area,country,website,green_fee,note,lat,lng').order('name',{ascending:true}).limit(2000);
+    const {data,error}=await sb.from('courses').select('id,name,tee,par,region,area,country,website,green_fee,note,phone,email,lat,lng').order('name',{ascending:true}).limit(2000);
     if(error)throw error;
-    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
+    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',phone:c.phone||'',email:c.email||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
     // Classify each course: PLAYED (has a final round) or LIVE (round started, not final).
     // Course lives on the __meta row; scores/final live there too; scores on player rows.
