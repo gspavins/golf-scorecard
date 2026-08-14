@@ -8,10 +8,7 @@
 <link rel="apple-touch-icon" href="golf-icon.png">
 <meta name="theme-color" content="#293234">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <style>
   :root{--ink:#293234;--card:#f4f7f4;--line:#c3ccc3;--hair:#d3ddd3;--gun:#293234;--gun-dk:#1e2627;--pastel:#c5dac5;--pastel-soft:#dceadc;--pastel-deep:#7fa87f;--dim:#6f7a76}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -47,9 +44,6 @@
   .empty{text-align:center;color:var(--dim);padding:40px 20px;font-size:14px}
   .loading{text-align:center;color:var(--dim);padding:40px;font-size:13px}
   #map{flex:1;min-height:60vh;width:100%}
-  .marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(41,50,52,.25)}
-  .marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#293234;color:#fff;font-weight:800;font-family:inherit}
-  .marker-cluster span{color:#fff}
   #mapPane{flex:1;display:none;flex-direction:column}
   #mapPane.on{display:flex}
   #listPane.off{display:none}
@@ -175,12 +169,12 @@ function render(){
   }).join('');
   listEl.querySelectorAll('.info').forEach(b=>b.onclick=()=>showInfo(COURSES[+b.dataset.i]));
   listEl.querySelectorAll('input[data-plan]').forEach(cb=>cb.onchange=()=>togglePlanned(COURSES[+cb.dataset.plan],cb.checked));
-  if(map)buildMarkers();
+  if(map)buildMarkers(false);
 }
 
 async function togglePlanned(c,on){
   if(on)PLANNED.add(c.id); else PLANNED.delete(c.id);
-  if(map)buildMarkers();
+  if(map)buildMarkers(false);
   // persist
   try{
     if(!sbClient)return;
@@ -222,17 +216,16 @@ function ensureMap(){
   mapBuilt=true;
   map=L.map('map',{scrollWheelZoom:true}).setView([-29.0,25.0],5);  // roughly centre on SA
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
-  markers=(typeof L.markerClusterGroup==='function')
-    ? L.markerClusterGroup({maxClusterRadius:45,spiderfyOnMaxZoom:true,showCoverageOnHover:false,chunkedLoading:true})
-    : L.layerGroup();
-  markers.addTo(map);
-  buildMarkers();
+  markers=L.layerGroup().addTo(map);
+  map.on('zoomend',()=>buildMarkers(false));   // rescale markers to zoom, keep view
+  buildMarkers(true);
 }
-// golf ball marker: dimpled ball tinted by status, thin black outline
-function golfIcon(color){
+// golf ball marker: dimpled ball tinted by status, thin black outline. size scales with zoom.
+function golfIcon(color,size){
+  const w=Math.round(size*30/34), h=size;
   const gid='ball-'+color.replace('#','');
   const svg=`
-  <svg width="24" height="28" viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">
+  <svg width="${w}" height="${h}" viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="${gid}" cx="38%" cy="34%" r="70%">
         <stop offset="0%" stop-color="#ffffff"/>
@@ -252,22 +245,28 @@ function golfIcon(color){
     </g>
     <ellipse cx="11" cy="8" rx="3" ry="2" fill="#fff" opacity="0.45"/>
   </svg>`;
-  return L.divIcon({className:'golfpin',iconSize:[24,28],iconAnchor:[12,21],popupAnchor:[0,-20],html:svg});
+  return L.divIcon({className:'golfpin',iconSize:[w,h],iconAnchor:[Math.round(w/2),Math.round(h*25/34)],popupAnchor:[0,-Math.round(h*0.7)],html:svg});
+}
+// marker pixel size based on current zoom
+function markerSize(){
+  const z=map?map.getZoom():6;
+  return Math.max(15,Math.min(38, Math.round(15+(z-5)*3.2)));
 }
 const COLORS={played:'#1f9d55',live:'#f4c020',planned:'#d0342c',other:'#ffffff'};
-function buildMarkers(){
+function buildMarkers(fit){
   if(!markers)return;
   markers.clearLayers();
+  const sz=markerSize();
   const rows=filtered().filter(c=>c.lat!=null&&c.lng!=null);
   const pts=[];
   rows.forEach(c=>{
     const st=statusOf(c)||'other';
-    const icon=golfIcon(COLORS[st]);
+    const icon=golfIcon(COLORS[st],sz);
     const m=L.marker([+c.lat,+c.lng],{icon});
     m.on('click',()=>showInfo(c));   // open the same detail card as the List tab
     markers.addLayer(m); pts.push([+c.lat,+c.lng]);
   });
-  if(pts.length){map.fitBounds(pts,{padding:[30,30],maxZoom:11});}
+  if(fit&&pts.length){map.fitBounds(pts,{padding:[30,30],maxZoom:11});}
 }
 
 // ---- tabs ----
