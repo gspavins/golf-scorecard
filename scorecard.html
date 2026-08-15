@@ -31,7 +31,8 @@
   .hcaps{flex:0 0 auto;display:flex;flex-direction:column;gap:4px}
   .hcaps label{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
   .hcaps span{white-space:nowrap}
-  .hcaps input{width:44px;font:inherit;font-size:14px;font-weight:700;text-align:center;color:var(--green-dk);border:1px solid var(--hair);border-radius:5px;padding:2px 0;background:#fff;-moz-appearance:textfield}
+  .hcaps input{width:52px;font:inherit;font-size:14px;font-weight:700;text-align:center;color:var(--green-dk);border:1px solid var(--hair);border-radius:5px;padding:2px 0;background:#fff;-moz-appearance:textfield}
+  .hcaps .chdisp{font-size:9px;font-weight:800;color:var(--pastel-deep);letter-spacing:.02em;white-space:nowrap}
   .hcaps input::-webkit-outer-spin-button,.hcaps input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 
   .meta{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border:2px solid var(--line);border-top:1px solid var(--hair);border-bottom:none;font-size:11px}
@@ -262,8 +263,8 @@
       <div class="estd" id="courseSub">Par 70</div>
     </div>
     <div class="hcaps">
-      <label><span>Gav H'cap</span><input type="number" id="hc-gav" min="0" max="54" value="0"></label>
-      <label><span>Phil H'cap</span><input type="number" id="hc-phil" min="0" max="54" value="0"></label>
+      <label><span>Gav Index</span><input type="number" id="hi-gav" min="0" max="54" step="0.1" value="0"><small class="chdisp" id="ch-gav">CH 0</small></label>
+      <label><span>Phil Index</span><input type="number" id="hi-phil" min="0" max="54" step="0.1" value="0"><small class="chdisp" id="ch-phil">CH 0</small></label>
     </div>
   </header>
 
@@ -416,7 +417,24 @@ function dbg(msg){
 let courseKey = "kloof";
 let HOLES = COURSES[courseKey].holes;
 const scores = { gav:{}, phil:{} };
-const hcap = { gav:0, phil:0 };
+const hcap = { gav:0, phil:0 };   // COURSE handicap (used for stroke allocation)
+const hindex = { gav:0, phil:0 }; // handicap INDEX (what the player enters)
+
+// WHS course handicap = Index × (Slope/113) + (CR − Par), rounded to nearest whole.
+function courseHandicap(index){
+  const c=COURSES[courseKey]||{};
+  const slope=c.slope||113, cr=(c.cr!=null?c.cr:c.par), par=c.par||72;
+  const ch=index*(slope/113)+(cr-par);
+  return Math.max(0,Math.round(ch));
+}
+// recompute both players' course handicaps from their indexes + current course
+function recomputeCH(){
+  hcap.gav=courseHandicap(hindex.gav);
+  hcap.phil=courseHandicap(hindex.phil);
+  const g=document.getElementById('ch-gav'),p=document.getElementById('ch-phil');
+  if(g)g.textContent='CH '+hcap.gav;
+  if(p)p.textContent='CH '+hcap.phil;
+}
 let gameId = getGameId();
 let gameDate = todayISO();      // yyyy-mm-dd
 let gameFinal = false;          // marked final (still editable)
@@ -567,8 +585,12 @@ function status(){
 // ---------- course switching ----------
 function loadCourse(key){
   courseKey=key; HOLES=COURSES[key].holes;
-  document.getElementById('courseName').textContent=COURSES[key].name;
-  document.getElementById('courseSub').textContent=`Par ${COURSES[key].par}`;
+  const c=COURSES[key];
+  document.getElementById('courseName').textContent=c.name;
+  let sub=`Par ${c.par}`;
+  if(c.cr!=null&&c.slope!=null)sub+=` · CR ${c.cr} / Slope ${c.slope}`;
+  document.getElementById('courseSub').textContent=sub;
+  recomputeCH();   // course handicap depends on this course's slope/CR
   build();
 }
 
@@ -577,7 +599,7 @@ function lsKey(){return `sc:${gameId}`;}
 function persistLocal(){
   try{
     const skinAmt=(document.getElementById('skinAmt')||{}).value;
-    localStorage.setItem(lsKey(),JSON.stringify({courseKey,scores,hcap,gameDate,gameFinal,skinAmt,skinsPosted}));
+    localStorage.setItem(lsKey(),JSON.stringify({courseKey,scores,hcap,hindex,gameDate,gameFinal,skinAmt,skinsPosted}));
     indexGame();
   }catch(e){}
 }
@@ -589,11 +611,13 @@ function restoreLocal(){
     if(d.courseKey&&COURSES[d.courseKey])courseKey=d.courseKey;
     Object.assign(scores.gav,d.scores?.gav||{});
     Object.assign(scores.phil,d.scores?.phil||{});
-    if(d.hcap){hcap.gav=d.hcap.gav||0;hcap.phil=d.hcap.phil||0;}
+    if(d.hindex){hindex.gav=d.hindex.gav||0;hindex.phil=d.hindex.phil||0;}
+    else if(d.hcap){hindex.gav=d.hcap.gav||0;hindex.phil=d.hcap.phil||0;}  // legacy
     if(d.gameDate)gameDate=d.gameDate;
     gameFinal=!!d.gameFinal;
     skinsPosted=!!d.skinsPosted;
     if(d.skinAmt!=null){const el=document.getElementById('skinAmt');if(el)el.value=d.skinAmt;}
+    recomputeCH();
     return true;
   }catch(e){return false;}
 }
@@ -669,7 +693,7 @@ async function loadCoursesFromDB(){
   if(!sb)return;
   try{
     // fetch ALL courses (don't filter on active — older rows may have null)
-    const cs=await fetchAllRows('courses','id,name,location,tee,par,active');
+    const cs=await fetchAllRows('courses','id,name,location,tee,par,cr,slope,active');
     if(!cs||!cs.length)return;                 // nothing in DB yet — keep built-ins
     const usable=cs.filter(c=>c.active!==false);   // treat null/true as active
     // fetch ALL hole rows (Supabase caps at 1000 per request — must paginate)
@@ -681,7 +705,7 @@ async function loadCoursesFromDB(){
       const holes=(byCourse[c.id]||[]).sort((a,b)=>a.hole-b.hole)
         .map(h=>({n:h.hole,d:h.distance,par:h.par,si:h.stroke_index}));
       if(holes.length===18){                    // only use complete courses
-        merged[c.id]={name:c.name,loc:c.location||'',tee:c.tee||'',par:c.par,holes};
+        merged[c.id]={name:c.name,loc:c.location||'',tee:c.tee||'',par:c.par,cr:(c.cr==null?null:+c.cr),slope:(c.slope==null?null:+c.slope),holes};
       }
     });
     dbg('courses loaded: '+Object.keys(merged).length+' of '+cs.length);
@@ -719,8 +743,12 @@ async function subscribeGame(pushIfEmpty){
   if(error)throw error;
   if(data&&data.length){
     let hasMeta=false;
-    data.forEach(r=>{if(r.player==='__meta'){hasMeta=true;if(COURSES[r.course])courseKey=r.course;if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;if(r.game_date)gameDate=r.game_date;gameFinal=!!r.final;}
+    data.forEach(r=>{if(r.player==='__meta'){hasMeta=true;if(COURSES[r.course])courseKey=r.course;
+        if(r.hindex_gav!=null)hindex.gav=r.hindex_gav; else if(r.hcap_gav!=null)hindex.gav=r.hcap_gav;
+        if(r.hindex_phil!=null)hindex.phil=r.hindex_phil; else if(r.hcap_phil!=null)hindex.phil=r.hcap_phil;
+        if(r.game_date)gameDate=r.game_date;gameFinal=!!r.final;}
       else if(scores[r.player]){scores[r.player][r.hole]=r.strokes;}});
+    recomputeCH();
     metaWritten=hasMeta;
     // self-heal: game has scores but no meta row (course + handicaps) — write it from what we have
     if(!hasMeta){await pushMeta();metaWritten=true;}
@@ -730,15 +758,20 @@ async function subscribeGame(pushIfEmpty){
   channel=sb.channel('game-'+gameId)
     .on('postgres_changes',{event:'*',schema:'public',table:'scores',filter:`game_id=eq.${gameId}`},payload=>{
       const r=payload.new; if(!r)return;
-      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){setCourseInput(r.course);loadCourse(r.course);}if(r.hcap_gav!=null)hcap.gav=r.hcap_gav;if(r.hcap_phil!=null)hcap.phil=r.hcap_phil;document.getElementById('hc-gav').value=hcap.gav;document.getElementById('hc-phil').value=hcap.phil;if(r.game_date){setDate(r.game_date);}gameFinal=!!r.final;updateFinalUI();}
+      if(r.player==='__meta'){if(COURSES[r.course]&&r.course!==courseKey){setCourseInput(r.course);loadCourse(r.course);}
+        if(r.hindex_gav!=null)hindex.gav=r.hindex_gav; else if(r.hcap_gav!=null)hindex.gav=r.hcap_gav;
+        if(r.hindex_phil!=null)hindex.phil=r.hindex_phil; else if(r.hcap_phil!=null)hindex.phil=r.hcap_phil;
+        recomputeCH();
+        document.getElementById('hi-gav').value=hindex.gav;document.getElementById('hi-phil').value=hindex.phil;
+        if(r.game_date){setDate(r.game_date);}gameFinal=!!r.final;updateFinalUI();}
       else if(scores[r.player]){if(r.strokes==null)delete scores[r.player][r.hole];else scores[r.player][r.hole]=r.strokes;}
       build();
     }).subscribe();
   dot.className='dotstat on';
   msg.innerHTML=`Live sync on · game <b>${gameId}</b>`;
   setCourseInput(courseKey);
-  document.getElementById('hc-gav').value=hcap.gav;
-  document.getElementById('hc-phil').value=hcap.phil;
+  document.getElementById('hi-gav').value=hindex.gav;
+  document.getElementById('hi-phil').value=hindex.phil;
   setDate(gameDate);
   loadCourse(courseKey);
 }
@@ -808,7 +841,7 @@ async function pushMeta(){
   persistLocal();
   if(!online||!sb){dbg('pushMeta (OFFLINE, local only)');return;}
   try{
-    const r=await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()},{onConflict:'game_id,player,hole'});
+    const r=await sb.from('scores').upsert({game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,hindex_gav:hindex.gav,hindex_phil:hindex.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()},{onConflict:'game_id,player,hole'});
     if(r.error)dbg('pushMeta ERROR: '+r.error.message);
     else{dbg('pushMeta OK game='+gameId+' course='+courseKey+' hc='+hcap.gav+'/'+hcap.phil);metaWritten=true;}
   }catch(e){dbg('pushMeta EXCEPTION: '+e.message);}
@@ -816,7 +849,7 @@ async function pushMeta(){
 // upload every locally-held score for this game (used right after connecting)
 async function pushAllLocal(){
   if(!online||!sb)return;
-  const rows=[{game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()}];
+  const rows=[{game_id:gameId,player:'__meta',hole:0,course:courseKey,hcap_gav:hcap.gav,hcap_phil:hcap.phil,hindex_gav:hindex.gav,hindex_phil:hindex.phil,game_date:gameDate,final:gameFinal,updated_at:new Date().toISOString()}];
   for(const who of ['gav','phil']){
     for(const h in scores[who]){
       if(scores[who][h]!=null)rows.push({game_id:gameId,player:who,hole:+h,strokes:scores[who][h],updated_at:new Date().toISOString()});
@@ -881,8 +914,8 @@ function buildCourseDropdown(){
   filter.oninput=()=>renderCourseOptions(filter.value);
   applyCourseLock();
 }
-document.getElementById('hc-gav').oninput=e=>{hcap.gav=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
-document.getElementById('hc-phil').oninput=e=>{hcap.phil=Math.max(0,Math.min(54,parseInt(e.target.value,10)||0));promoteToLive();build();pushMeta();};
+document.getElementById('hi-gav').oninput=e=>{hindex.gav=Math.max(0,Math.min(54,parseFloat(e.target.value)||0));recomputeCH();promoteToLive();build();pushMeta();};
+document.getElementById('hi-phil').oninput=e=>{hindex.phil=Math.max(0,Math.min(54,parseFloat(e.target.value)||0));recomputeCH();promoteToLive();build();pushMeta();};
 document.getElementById('gameDateInput').onchange=e=>{promoteToLive();setDate(e.target.value);pushMeta();indexGame();};
 document.getElementById('reset').onclick=async()=>{
   if(!confirm('Clear all scores for this game?'))return;
@@ -904,10 +937,10 @@ async function switchGame(id, review){
   const u=new URL(location.href);u.searchParams.set('game',id);history.replaceState(null,'',u);
   if(!review) localStorage.setItem('lastGame',id);   // only a live game becomes the resumable one
   // reset in-memory state, then load
-  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;courseKey='kloof';gameDate=todayISO();gameFinal=false;metaWritten=false;courseLocked=false;
+  scores.gav={};scores.phil={};hcap.gav=0;hcap.phil=0;hindex.gav=0;hindex.phil=0;courseKey='kloof';gameDate=todayISO();gameFinal=false;metaWritten=false;courseLocked=false;
   restoreLocal();
-  document.getElementById('hc-gav').value=hcap.gav;
-  document.getElementById('hc-phil').value=hcap.phil;
+  document.getElementById('hi-gav').value=hindex.gav;
+  document.getElementById('hi-phil').value=hindex.phil;
   setDate(gameDate);
   setCourseInput(courseKey);
   loadCourse(courseKey);
@@ -1262,8 +1295,8 @@ document.getElementById('dbgToggle').onclick=(e)=>{e.preventDefault();const p=do
 // ---------- boot ----------
 restoreLocal();
 liveGameId=gameId;
-document.getElementById('hc-gav').value=hcap.gav;
-document.getElementById('hc-phil').value=hcap.phil;
+document.getElementById('hi-gav').value=hindex.gav;
+document.getElementById('hi-phil').value=hindex.phil;
 setDate(gameDate);
 document.getElementById('gameId').innerHTML=`Game <code>${gameId}</code> — share this link so Gav &amp; Phil see the same card.`;
 document.getElementById('verNum').textContent=APP_VERSION;

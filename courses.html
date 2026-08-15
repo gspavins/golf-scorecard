@@ -194,6 +194,7 @@ function showInfo(c){
   else if(st==='planned')rows.push('<div class="row"><div class="lbl">Status</div><div class="val"><b style="color:#d0342c">Planned</b></div></div>');
   const place=[c.area,c.region,c.country].filter(Boolean).join(', ');
   if(place)rows.push(`<div class="row"><div class="lbl">Location</div><div class="val">${esc(place)}</div></div>`);
+  rows.push(`<div class="row"><div class="lbl">Course</div><div class="val">Par ${c.par}${c.tee?' · '+esc(c.tee)+' tees':''}${(c.cr!=null&&c.slope!=null)?` · CR ${c.cr} / Slope ${c.slope}`:''}</div></div>`);
   rows.push(`<div class="row"><div class="lbl">On the map</div><div class="val">${(c.lat!=null&&c.lng!=null)?('Pinned at '+(+c.lat).toFixed(4)+', '+(+c.lng).toFixed(4)):'No exact GPS on record — using a name search'}</div></div>`);
   if(c.website)rows.push(`<div class="row"><div class="lbl">Website</div><div class="val"><a href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website)}</a></div></div>`);
   if(c.phone)rows.push(`<div class="row"><div class="lbl">Phone</div><div class="val"><a href="tel:${esc(c.phone.replace(/[^0-9+]/g,''))}">${esc(c.phone)}</a></div></div>`);
@@ -282,9 +283,9 @@ async function load(){
   try{
     const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
     sbClient=sb;
-    const {data,error}=await sb.from('courses').select('id,name,tee,par,region,area,country,website,green_fee,note,phone,email,lat,lng').order('name',{ascending:true}).limit(2000);
+    const {data,error}=await sb.from('courses').select('id,name,tee,par,cr,slope,region,area,country,website,green_fee,note,phone,email,lat,lng').order('name',{ascending:true}).limit(2000);
     if(error)throw error;
-    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',phone:c.phone||'',email:c.email||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
+    COURSES=(data||[]).map(c=>({id:c.id,name:c.name,tee:c.tee||'',par:c.par,cr:c.cr,slope:c.slope,region:c.region||'',area:c.area||'',country:c.country||'',website:c.website||'',green_fee:c.green_fee||'',note:c.note||'',phone:c.phone||'',email:c.email||'',lat:(c.lat==null?null:+c.lat),lng:(c.lng==null?null:+c.lng)}));
     if(!COURSES.length){listEl.innerHTML='<div class="empty">No courses in the database yet. Run courses.sql in Supabase.</div>';return;}
     // Classify each course: PLAYED (has a final round) or LIVE (round started, not final).
     // Course lives on the __meta row; scores/final live there too; scores on player rows.
