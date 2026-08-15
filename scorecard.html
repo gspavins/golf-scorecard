@@ -107,6 +107,23 @@
   .slides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;border:2px solid var(--line);border-top:none;border-radius:0 0 9px 9px;background:var(--card)}
   .slides::-webkit-scrollbar{display:none}
   .slide{flex:0 0 100%;width:100%;scroll-snap-align:start}
+  .skinsbar{padding:14px;display:flex;justify-content:center;align-items:center;gap:8px}
+  .skinsbar label{font-weight:700;font-size:14px;color:var(--green-dk);display:flex;align-items:center;gap:6px}
+  .skinsbar input{width:90px;font:inherit;font-weight:700;font-size:16px;border:1px solid var(--hair);border-radius:7px;padding:6px 8px;text-align:center}
+  .skinsummary{display:flex;gap:10px;padding:0 14px 12px}
+  .skinsummary .sk{flex:1;background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:12px;text-align:center}
+  .skinsummary .sk .nm{font-family:Georgia,serif;font-weight:700;font-size:15px;color:var(--green-dk)}
+  .skinsummary .sk .holes{font-size:11px;color:var(--dim);margin-top:2px}
+  .skinsummary .sk .amt{font-size:24px;font-weight:800;margin-top:4px;color:var(--gun-dk)}
+  .skinsummary .sk.win{background:var(--pastel-soft);border-color:var(--pastel-deep)}
+  .skinresult{text-align:center;font-weight:800;font-size:15px;padding:0 14px 12px;color:var(--gun-dk)}
+  #skinsTable{width:100%;border-collapse:collapse;font-size:12px}
+  #skinsTable th,#skinsTable td{padding:5px 2px;text-align:center;border-top:1px solid var(--hair)}
+  #skinsTable thead th{background:#efece3;font-size:10px;text-transform:uppercase;color:var(--dim);border:none}
+  #skinsTable .rl{text-align:left;padding-left:10px;font-weight:700}
+  #skinsTable td.skwin{background:var(--win);font-weight:800;color:#0f5c34}
+  #skinsTable td.carry{color:var(--dim);font-style:italic}
+  .skinnote{font-size:11px;color:var(--dim);padding:12px 16px 18px;line-height:1.5}
   .slide .cardwrap{border-left:none;border-right:none;border-bottom:none}
   .slide .cardwrap.last{border-radius:0}
 
@@ -269,6 +286,7 @@
   <div class="tabs">
     <button class="tab active" data-i="0" id="tab-card">Scorecard</button>
     <button class="tab" data-i="1" id="tab-chart">Statistics</button>
+    <button class="tab" data-i="2" id="tab-skins">Skins</button>
   </div>
 
   <div class="slides" id="slides">
@@ -311,6 +329,15 @@
        <thead><tr><th>Player</th><th>-2</th><th>-1</th><th>Par</th><th>+1</th><th>+2</th><th>+3</th><th>Ring</th></tr></thead>
        <tbody id="statsBody"></tbody>
      </table>
+   </section>
+
+   <section class="slide" id="slide-skins">
+     <div class="skinsbar">
+       <label>Skin per hole: <span class="cur">R</span><input type="number" id="skinAmt" min="0" step="5" inputmode="numeric" value="10"></label>
+     </div>
+     <div class="skinsummary" id="skinSummary"></div>
+     <div class="cardwrap"><table id="skinsTable"></table></div>
+     <div class="skinnote">Lowest gross on a hole wins the skin. Tied holes carry over to the next hole. When you mark the round final, the net result posts to the spend tracker.</div>
    </section>
   </div>
 
@@ -518,6 +545,7 @@ function build(){
   });
   status();
   updateChart();
+  if(document.getElementById('slide-skins'))renderSkins();
   persistLocal();
 }
 function status(){
@@ -548,7 +576,8 @@ function loadCourse(key){
 function lsKey(){return `sc:${gameId}`;}
 function persistLocal(){
   try{
-    localStorage.setItem(lsKey(),JSON.stringify({courseKey,scores,hcap,gameDate,gameFinal}));
+    const skinAmt=(document.getElementById('skinAmt')||{}).value;
+    localStorage.setItem(lsKey(),JSON.stringify({courseKey,scores,hcap,gameDate,gameFinal,skinAmt,skinsPosted}));
     indexGame();
   }catch(e){}
 }
@@ -563,6 +592,8 @@ function restoreLocal(){
     if(d.hcap){hcap.gav=d.hcap.gav||0;hcap.phil=d.hcap.phil||0;}
     if(d.gameDate)gameDate=d.gameDate;
     gameFinal=!!d.gameFinal;
+    skinsPosted=!!d.skinsPosted;
+    if(d.skinAmt!=null){const el=document.getElementById('skinAmt');if(el)el.value=d.skinAmt;}
     return true;
   }catch(e){return false;}
 }
@@ -864,6 +895,7 @@ let liveGameId=gameId;   // the round considered "in progress"
 let reviewing=false;     // true when viewing a past game (not the live round)
 let courseLocked=false;  // true when course was chosen from the Courses list (not editable here)
 let viewOnly=false;      // true when viewing a course read-only (no score entry)
+let skinsPosted=false;   // true once this game's skins result has been sent to the spend tracker
 let listOnly=false;      // true when the page is showing only the games list (from Past rounds)
 let metaWritten=false;   // whether we've written the meta row for the current game
 async function switchGame(id, review){
@@ -1041,10 +1073,68 @@ document.querySelectorAll('.ct').forEach(b=>b.onclick=()=>{
 
 // ---------- tabs <-> swipe ----------
 const slides=document.getElementById('slides');
-const stabs=[document.getElementById('tab-card'),document.getElementById('tab-chart')];
-function setTab(i){stabs.forEach((t,k)=>t.classList.toggle('active',k===i));if(i===1)updateChart();}
+const stabs=[document.getElementById('tab-card'),document.getElementById('tab-chart'),document.getElementById('tab-skins')];
+function setTab(i){stabs.forEach((t,k)=>t.classList.toggle('active',k===i));if(i===1)updateChart();if(i===2)renderSkins();}
 stabs.forEach((t,i)=>t.onclick=()=>{slides.scrollTo({left:i*slides.clientWidth,behavior:'smooth'});setTab(i);});
 slides.addEventListener('scroll',()=>{setTab(Math.round(slides.scrollLeft/slides.clientWidth));},{passive:true});
+
+// ---------- skins game ----------
+function computeSkins(){
+  // returns {holes:[{hole,winner:'gav'|'phil'|null,carry:n,value}], gavSkins, philSkins, gavHoles, philHoles}
+  const amt=Math.max(0,+(document.getElementById('skinAmt').value)||0);
+  const res={holes:[],gavHoles:0,philHoles:0,gavValue:0,philValue:0,amt};
+  let carry=0;
+  HOLES.forEach(h=>{
+    const a=shownScore('gav',h),b=shownScore('phil',h);
+    let winner=null;
+    const pot=(carry+1)*amt;
+    if(a!=null&&b!=null){
+      if(a<b)winner='gav';else if(b<a)winner='phil';
+      if(winner){
+        if(winner==='gav'){res.gavHoles++;res.gavValue+=pot;}else{res.philHoles++;res.philValue+=pot;}
+        carry=0;
+      }else{carry++;} // tie carries over
+    }
+    res.holes.push({hole:h.n,winner,potHoles:carry===0?(winner?( (carry) ):0):carry,value:winner?pot:0,tied:(a!=null&&b!=null&&winner===null)});
+  });
+  res.net=res.gavValue-res.philValue; // >0 Gav up
+  return res;
+}
+function renderSkins(){
+  const s=computeSkins();
+  // summary
+  const sum=document.getElementById('skinSummary');
+  sum.innerHTML=
+    `<div class="sk ${s.net>0?'win':''}"><div class="nm">Gav</div><div class="holes">${s.gavHoles} skin${s.gavHoles!==1?'s':''}</div><div class="amt">${R(s.gavValue)}</div></div>`+
+    `<div class="sk ${s.net<0?'win':''}"><div class="nm">Phil</div><div class="holes">${s.philHoles} skin${s.philHoles!==1?'s':''}</div><div class="amt">${R(s.philValue)}</div></div>`;
+  // result line
+  let rtxt;
+  if(s.net>0)rtxt=`Phil owes Gav ${R(s.net)}`;
+  else if(s.net<0)rtxt=`Gav owes Phil ${R(-s.net)}`;
+  else rtxt='All square';
+  let resEl=document.getElementById('skinResult');
+  if(!resEl){resEl=document.createElement('div');resEl.id='skinResult';resEl.className='skinresult';sum.after(resEl);}
+  resEl.textContent=rtxt;
+  // hole table
+  let head='<tr><th class="rl">Hole</th>'+HOLES.map(h=>`<th>${h.n}</th>`).join('')+'</tr>';
+  const cell=(who)=>HOLES.map((h,i)=>{
+    const hs=s.holes[i];
+    const v=shownScore(who,h);
+    let cls=hs.winner===who?'skwin':(hs.tied?'carry':'');
+    return `<td class="${cls}">${v!=null?v:''}</td>`;
+  }).join('');
+  let gav='<tr><td class="rl">Gav</td>'+cell('gav')+'</tr>';
+  let phil='<tr><td class="rl">Phil</td>'+cell('phil')+'</tr>';
+  // skin row: who won each hole (or carry)
+  let skinrow='<tr><td class="rl">Skin</td>'+s.holes.map(hs=>{
+    if(hs.winner)return `<td class="skwin">${hs.winner==='gav'?'G':'P'}</td>`;
+    if(hs.tied)return '<td class="carry">↔</td>';
+    return '<td></td>';
+  }).join('')+'</tr>';
+  document.getElementById('skinsTable').innerHTML=head+gav+phil+skinrow;
+}
+function R(n){n=Math.round((+n||0)*100)/100;const cents=Math.round(n*100)%100!==0;const s=n.toFixed(cents?2:0);const[i,d]=s.split('.');return 'R'+i.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(d?'.'+d:'');}
+document.getElementById('skinAmt').addEventListener('input',()=>{renderSkins();persistLocal();});
 
 // ---------- finalise ----------
 function updateFinalUI(){
@@ -1056,9 +1146,39 @@ function updateFinalUI(){
   const share=document.getElementById('shareBtn');
   if(share)share.hidden=!gameFinal;   // share only a finished round
 }
-document.getElementById('finalBtn').onclick=()=>{
+document.getElementById('finalBtn').onclick=async()=>{
   gameFinal=!gameFinal; updateFinalUI(); persistLocal(); pushMeta(); indexGame();
+  if(gameFinal)await postSkinsToSpend();
 };
+
+// Post the net skins result to the spend tracker (once per game).
+async function postSkinsToSpend(){
+  if(skinsPosted)return;                 // don't double-post
+  const s=computeSkins();
+  if(!s.net){return;}                    // all square — nothing to post
+  if(!(online&&sb)){dbg('skins: offline, will not post');return;}
+  // Balance model in spend tracker: a spend by X of amount A moves the net owed by A/2
+  // toward "the other owes X". To make the loser owe the winner exactly |net|,
+  // post a spend under the WINNER for 2×|net|.
+  const winner=s.net>0?'gav':'phil';
+  const amount=Math.abs(s.net)*2;
+  const cn=COURSES[courseKey]?COURSES[courseKey].name:'round';
+  const desc=`Skins — ${winner==='gav'?'Gav':'Phil'} won ${R(Math.abs(s.net))} (${cn})`;
+  try{
+    await sb.from('spend').insert({
+      id:'skins-'+gameId,               // deterministic id => re-marking final won't duplicate
+      who:winner, description:desc, amount, kind:'spend',
+      created_at:new Date().toISOString()
+    });
+    skinsPosted=true; persistLocal();
+    dbg('skins posted: '+desc);
+    alert(`Skins added to the spend tracker:\n${desc}`);
+  }catch(e){
+    // duplicate id (already posted) is fine; otherwise log
+    if(String(e.message||'').includes('duplicate')){skinsPosted=true;persistLocal();}
+    else dbg('skins post failed: '+e.message);
+  }
+}
 
 // ---- share a finished round: summary card + a shot of the scorecard grid ----
 document.getElementById('shareBtn').onclick=async()=>{
